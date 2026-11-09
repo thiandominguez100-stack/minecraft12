@@ -1,5 +1,5 @@
 const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),GRID=6;
-export function waterSurfaceY(world,x,y,z){const k=keyOf(x,y,z),s=world.waterStates?.get(k);if(s?.source||s?.falling||world.waterSources?.has(k)||world.get(x,y+1,z)==="water")return y+.5;return y+.5-(clamp(Number(s?.level)||1,1,7)-1)*.075;}
+export function waterSurfaceY(world,x,y,z){const k=keyOf(x,y,z),s=world.waterStates?.get(k);if(s?.source||s?.falling||s?.settled||world.waterSources?.has(k)||world.get(x,y+1,z)==="water")return y+.5;return y+.5-(clamp(Number(s?.level)||1,1,7)-1)*.075;}
 export function waterCornerY(world,cx,y,cz){const x0=Math.floor(cx+.5-1e-7),z0=Math.floor(cz+.5-1e-7),cells=[[x0,z0],[x0+1,z0],[x0,z0+1],[x0+1,z0+1]];let total=0,count=0;for(const [x,z] of cells)if(world.get(x,y,z)==="water"){total+=waterSurfaceY(world,x,y,z);count++;}return count?total/count:y-.5;}
 export function buildWaterSurface(world,cells){
  const positions=[],uvs=[],colors=[],waveWeights=[],indices=[],cache=new Map();let topFaces=0,sideFaces=0;
