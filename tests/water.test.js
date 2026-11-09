@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {WaterSimulation} from "../src/fluid.js";
 import {BLOCK_MAP} from "../src/data.js";
+import {terrainSample,riverCenterAt,WATER_LEVEL} from "../src/terrain.js";
 
 const key=(x,y,z)=>x+","+y+","+z;
 class FakeWorld{
@@ -165,4 +166,21 @@ test("generated non-source water initializes as supported and settled",()=>{
  assert.equal(fluid.levels.get(key(0,1,0)).settled,true);
  assert.equal(fluid.levels.get(key(0,2,0)).settled,true);
  assert.equal(fluid.levels.get(key(0,2,0)).falling,false);
+});
+
+test("legacy saves do not restore every natural river cell as an active source",()=>{
+ const world=new FakeWorld();world.seed=20261109;
+ let x=0,z=0;
+ for(let candidate=-80;candidate<=80;candidate++){
+  const cz=Math.round(riverCenterAt(candidate,world.seed));
+  const sample=terrainSample(candidate,cz,world.seed);
+  if(sample.isWaterColumn&&!sample.waterSource){x=candidate;z=cz;break;}
+ }
+ world.set(x,WATER_LEVEL,z,"water");
+ const fluid=new WaterSimulation(world);
+ fluid.restoreSources([[x,WATER_LEVEL,z]]);
+ assert.equal(fluid.exportSources().length,0);
+ world.set(90,WATER_LEVEL,90,"water");
+ fluid.restoreSources([[90,WATER_LEVEL,90]]);
+ assert.ok(fluid.exportSources().some(([sx,sy,sz])=>sx===90&&sy===WATER_LEVEL&&sz===90));
 });
