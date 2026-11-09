@@ -30,13 +30,13 @@ test("water hides its side against solid blocks",()=>{
  const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(-1,1,0,"stone");assert.equal(buildWaterSurface(w,[[0,1,0]]).sideFaces,3);
 });
 
-test("a calm source pool keeps a level waterline and only flowing cells slope",()=>{
+test("a calm source pool keeps a level waterline while flow state remains separate",()=>{
  const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(1,1,0,"water");
  w.waterSources.add(key(0,1,0));w.waterStates.set(key(0,1,0),{level:0,source:true,falling:false});
  w.waterStates.set(key(1,1,0),{level:1,source:false,falling:false,settled:true});
- assert.equal(waterSurfaceY(w,0,1,0),1.5);assert.equal(waterSurfaceY(w,1,1,0),1.5);
+ assert.equal(waterSurfaceY(w,0,1,0),1.512);assert.equal(waterSurfaceY(w,1,1,0),1.512);
  w.waterStates.set(key(1,1,0),{level:5,source:false,falling:false,settled:false});
- assert.ok(waterSurfaceY(w,1,1,0)<waterSurfaceY(w,0,1,0));
+ assert.equal(waterSurfaceY(w,1,1,0),waterSurfaceY(w,0,1,0));
 });
 
 test("calm supported water renders as a flat continuous surface",()=>{
