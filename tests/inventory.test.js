@@ -46,3 +46,12 @@ test("tools have single-item stacks and lose durability",()=>{
   inv.damageSelected(60);
   assert.equal(inv.count("wooden_pickaxe"),0);
 });
+
+test("canFit checks stack room and free inventory slots before crafting",()=>{
+ const inv=new Inventory("survival");
+ assert.equal(inv.canFit("oak_planks",4),true);
+ inv.slots=Array.from({length:36},()=>({id:"stone",count:64}));
+ assert.equal(inv.canFit("oak_planks",1),false);
+ inv.slots[0]={id:"oak_planks",count:63};
+ assert.equal(inv.canFit("oak_planks",1),true);
+});
