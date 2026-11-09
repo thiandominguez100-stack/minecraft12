@@ -1,6 +1,6 @@
 # BlockWorld 3D
 
-**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.3**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
+**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.3.1**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
 
 ## Play with GitHub Pages
 
@@ -20,13 +20,15 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 - Per-face 16×16 pixel textures with distinct grass, log, foliage and ore details.
 - Instanced block rendering with six-face material groups.
 - Instanced block rendering for a lower draw-call count.
-- First-person camera and pointer-lock mouse look.
+- First-person camera with buffered jumping, stable ground detection, AABB collision, gravity substeps, horizontal acceleration and air control.
+- Jump input has no artificial cooldown; a short input buffer prevents presses from being lost just before landing.
 - WASD movement, jumping, basic collision and Creative flight.
 - Block targeting, mining progress, block placement and a hotbar.
 - A 36-slot inventory with stack counts and basic tool durability.
 - Creative and Survival modes.
 - A small data-driven recipe list and crafting screen.
-- Animated passive creatures (sheep, cows and chickens) with 64×32 pixel texture atlases, idle/walk cycles and simple roaming.
+- Animated passive creatures (sheep, cows and chickens) with 64×32 pixel texture atlases, idle/walk/flee cycles, raycast hitboxes, health, knockback and basic drops.
+- Pixel-art 16×16 hotbar/inventory icons for blocks, tools, materials and food.
 - Day/night lighting, simple rain particles and weather commands.
 - Local save/load in browser storage, including world edits and inventory.
 - Local command console.
@@ -70,6 +72,15 @@ Some item IDs: `grass`, `dirt`, `stone`, `cobblestone`, `oak_log`, `oak_planks`,
 ## Save data
 
 World edits, player position, inventory, game mode, time and weather are stored in the browser's localStorage. A save is local to the browser and device that created it. Clearing site data or changing browser profiles can remove access to that save.
+
+## Alpha 0.3.1 — current gameplay fixes
+
+- Fixed the grounded-state flicker that pulled the player down and snapped them up every other frame.
+- Replaced corner-only collision checks with a full player AABB query.
+- Added swept vertical movement in small substeps, a stable support probe and buffered jump input.
+- Added accelerated horizontal movement with ground friction and air control.
+- Animals can now be targeted and hit with left click; they flash, receive knockback, flee and drop an item when defeated.
+- Replaced flat color squares in the hotbar/inventory with generated 16×16 pixel-art icons.
 
 ## Development status
 
