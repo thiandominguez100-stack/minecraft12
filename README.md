@@ -130,7 +130,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Added downward swimming force on Shift, while Space remains the upward swim stroke. The first-person arm is smaller, opaque, rendered above translucent water and includes a visible palm and fingers.
 - Added regression coverage for diving, the 64-chunk footprint and water sources refusing to overwrite solid blocks.
 
-## Alpha 0.9.0 — 64×64 block art and expanded world
+## Alpha 1.0.0 — 64×64 block art and expanded world
 
 - Every block face now uses an individually designed 64 × 64 pixel texture, with nearest-pixel sampling and mipmapped distance rendering.
 - Added distinct art treatments for grass tops and soil edges, layered dirt, fractured stone, bevelled cobblestone, bark and growth rings, plank seams and knots, sand ripples, bricks, minerals, bedrock, glass glints, snow, clay, moss, workbench, furnace, chest and torch.
@@ -139,3 +139,13 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Expanded the world from 100 to 144 chunks (12 × 12), each 16 × 16 blocks, for a 192 × 192 block footprint. Added a third mountain ridge, a third lake and another ruin.
 - Increased animal distribution across the larger world and extended wandering bounds to the new map edges.
 - Increased camera visibility and minimum night ambient lighting so detailed foliage remains readable after sunset.
+
+## Alpha 1.0.0 — first-person foliage occlusion and Minecraft-style crafting
+
+- Leaf blocks now render as opaque alpha-cut materials (alpha test 0.42, depth writing enabled) instead of late transparent objects. Their transparent texture holes stay open, while visible leaves depth-occlude correctly and no longer draw over the first-person hand.
+- First-person arm render order is raised above world geometry to keep the held arm clearly visible.
+- Rebuilt the inventory as a character-and-storage screen with a block-character preview, 27 main slots, a separate nine-slot hotbar and a personal 2 × 2 crafting grid.
+- Added shaped crafting: logs to four planks, two vertically arranged planks to four sticks, and a 2 × 2 square of planks to a crafting table.
+- Placing a crafting table and right-clicking it opens the 3 × 3 workbench interface. It supports wooden/stone/iron pickaxes, wooden axe, shovel, sword, furnace, chest and torches through real grid patterns.
+- Craft ingredients are moved out of inventory into grid cells, consumed when crafting, and safely returned when closing the screen. Output space is checked before consuming a recipe.
+- Added 2 × 2/3 × 3 recipe matching and inventory-capacity regression tests.
