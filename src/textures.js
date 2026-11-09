@@ -1,0 +1,51 @@
+import * as THREE from "three";
+
+export const BLOCK_TEXTURE_SIZE=64;
+export const BLOCK_TEXTURE_PROFILES=Object.freeze({
+ grass:"layered turf and soil edge",dirt:"crumbled soil and root flecks",stone:"fractured rock and mineral grain",
+ cobblestone:"bevelled stone pieces and mortar",oak_log:"bark grain and growth rings",oak_planks:"wooden boards and knots",
+ leaves:"alpha-cut leaf clusters",sand:"wind ripples and sand grains",glass:"translucent glass and edge glints",
+ bricks:"offset clay bricks and mortar",coal_ore:"coal seams",iron_ore:"iron veins",gold_ore:"gold clusters",
+ diamond_ore:"turquoise crystal seams",bedrock:"fractured dark foundation",water:"blue water tile",torch:"wood shaft and flame",
+ crafting_table:"wood workbench grid",furnace:"stone casing and furnace mouth",chest:"wood and brass bands",
+ snow:"packed snow and sparkle",clay:"mottled clay",moss:"organic moss patches"
+});
+const c=h=>new THREE.Color(h);
+const h=v=>"#"+v.getHexString();
+const rnd=(x,y,s)=>{let n=(Math.imul(x+s,374761393)+Math.imul(y-s,668265503))|0;n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295;};
+const shade=(v,f)=>h(c(v).multiplyScalar(f));
+const pixel=(ctx,x,y,color,a=1)=>{if(x<0||y<0||x>63||y>63)return;ctx.globalAlpha=a;ctx.fillStyle=color;ctx.fillRect(x,y,1,1);ctx.globalAlpha=1;};
+const rect=(ctx,x,y,w,ht,color,a=1)=>{ctx.globalAlpha=a;ctx.fillStyle=color;ctx.fillRect(x,y,w,ht);ctx.globalAlpha=1;};
+const stroke=(ctx,x1,y1,x2,y2,color,width=1,a=1)=>{ctx.globalAlpha=a;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.globalAlpha=1;};
+function noiseBase(ctx,color,seed,amount=.14){const base=c(color);for(let y=0;y<64;y++)for(let x=0;x<64;x++){const v=rnd(x>>1,y>>1,seed);pixel(ctx,x,y,h(base.clone().multiplyScalar(1-amount*.5+v*amount)));}}
+function soil(ctx,seed){noiseBase(ctx,0x80583e,seed,.22);for(let i=0;i<220;i++){const x=(rnd(i,3,seed+1)*64)|0,y=(rnd(i,7,seed+2)*64)|0;pixel(ctx,x,y,i%4===0?"#4e3528":i%3===0?"#b08155":"#684a34",.9);}for(let i=0;i<16;i++){const x=(rnd(i,5,seed+3)*59)|0,y=(rnd(i,9,seed+4)*58)|0;stroke(ctx,x,y,x+3,y+2,"#b88a5c",1,.6);}}
+function grass(ctx,face,seed){if(face==="top"){noiseBase(ctx,0x71a945,seed,.24);for(let i=0;i<280;i++){const x=(rnd(i,1,seed+5)*64)|0,y=(rnd(i,4,seed+6)*64)|0;pixel(ctx,x,y,i%4===0?"#3f7933":i%3===0?"#91ca59":"#5c963b");}return;}if(face==="bottom"){soil(ctx,seed);return;}soil(ctx,seed);rect(ctx,0,0,64,10,"#65973b");rect(ctx,0,0,64,3,"#8bc64c");for(let x=0;x<64;x+=4){const depth=3+(rnd(x,2,seed+7)*7|0);rect(ctx,x,8,2,depth,rnd(x,3,seed+8)>.5?"#6d4a30":"#99704b");}}
+function stone(ctx,seed,base=0x85898c){noiseBase(ctx,base,seed,.18);for(let i=0;i<120;i++){const x=(rnd(i,1,seed+11)*64)|0,y=(rnd(i,6,seed+12)*64)|0;pixel(ctx,x,y,i%3===0?"#50575b":i%2===0?"#b9bec0":"#71777a");}for(let i=0;i<8;i++){let x=(rnd(i,2,seed+13)*64)|0,y=(rnd(i,5,seed+14)*64)|0;for(let k=0;k<7;k++){pixel(ctx,x,y,"#53595d");x+=rnd(i,k,seed+15)>.5?1:-1;y++;}}}
+function cobble(ctx,seed){rect(ctx,0,0,64,64,"#514f4c");for(let y=0;y<4;y++)for(let x=0;x<4;x++){const bx=x*16+1+(rnd(x,y,seed)*2|0),by=y*16+1+(rnd(y,x,seed+1)*2|0),base=0x777c7d+(rnd(x,y,seed+2)*0x111111|0);rect(ctx,bx,by,14,14,shade(base,.66));rect(ctx,bx+1,by+1,12,12,shade(base,.95));rect(ctx,bx+2,by+2,9,2,shade(base,1.2));rect(ctx,bx+2,by+5,2,6,shade(base,1.12));rect(ctx,bx+3,by+12,9,1,shade(base,.6));}}
+function logTexture(ctx,face,seed){if(face==="top"||face==="bottom"){rect(ctx,0,0,64,64,"#714a2a");for(let r=28;r>1;r-=5){ctx.strokeStyle=r%2?"#c39860":"#996c3e";ctx.lineWidth=2;ctx.strokeRect(32-r,32-r,r*2,r*2);}rect(ctx,29,29,6,6,"#b48650");return;}rect(ctx,0,0,64,64,"#93653a");for(let x=0;x<64;x++){const v=Math.sin(x*.32+seed)*2+Math.sin(x*.09)*1.7;rect(ctx,x,0,1,64,x%11===0?"#52351f":x%6===0?"#684326":shade(0x956a3d,1+v*.025));}for(let i=0;i<6;i++){const x=5+(rnd(i,2,seed+2)*54|0),y=5+(rnd(i,7,seed+3)*54|0);rect(ctx,x,y,4,1,"#684426");rect(ctx,x-1,y+1,6,1,"#bf9055");rect(ctx,x,y+2,4,1,"#76502d");}}
+function planks(ctx,face,seed){rect(ctx,0,0,64,64,"#7c552f");for(let row=0;row<4;row++){const y=row*16;rect(ctx,0,y,64,15,shade(0xb18450,.87+rnd(row,1,seed)*.2));rect(ctx,0,y,64,1,"#67472d");rect(ctx,0,y+1,64,1,"#d1a66d");for(let x=0;x<64;x+=6)rect(ctx,x,y+4,1,10,rnd(x,row,seed+1)>.5?"#93683d":"#bc8d54");const kx=8+(rnd(row,4,seed+2)*46|0);rect(ctx,kx,y+7,5,2,"#744b2c");pixel(ctx,kx+2,y+6,"#d9b176");}}
+function foliage(ctx,seed){ctx.clearRect(0,0,64,64);const colors=["#24572c","#2f6f32","#438b3c","#55a348","#6db64e","#83c95d","#397c36"];for(let y=0;y<64;y++)for(let x=0;x<64;x++){const n=rnd(x,y,seed+1),cloud=Math.sin(x*.17+seed)*.12+Math.cos(y*.15-seed*.4)*.1+Math.sin((x+y)*.08)*.08;if(n+cloud<.24)continue;pixel(ctx,x,y,colors[Math.floor(rnd(x>>1,y>>1,seed+2)*colors.length)]);}for(let i=0;i<65;i++){const x=rnd(i,2,seed+3)*64|0,y=rnd(i,5,seed+4)*64|0;pixel(ctx,x,y,i%3===0?"#b0dc68":"#1d4d28");}}
+function sand(ctx,seed){noiseBase(ctx,0xe1ce99,seed,.1);for(let y=4;y<64;y+=9){const off=Math.sin(y*.3+seed)*1.5;stroke(ctx,0,y+off,64,y+off+Math.sin(y)*1.5,"#b6a16e",1,.55);stroke(ctx,0,y+2+off,64,y+2+off,"#f7e8bd",1,.38);}for(let i=0;i<250;i++){const x=rnd(i,2,seed+1)*64|0,y=rnd(i,5,seed+2)*64|0;pixel(ctx,x,y,i%2?"#f6e8bd":"#a38f63",.8);}}
+function glass(ctx){ctx.clearRect(0,0,64,64);rect(ctx,2,2,60,60,"#a6dce4",.2);rect(ctx,3,3,58,2,"#f1ffff",.8);rect(ctx,3,3,2,58,"#efffff",.7);rect(ctx,57,3,3,58,"#6bb5c7",.45);for(let i=0;i<5;i++)stroke(ctx,8+i*11,9,21+i*11,22,"#efffff",1,.25);}
+function bricks(ctx,seed){rect(ctx,0,0,64,64,"#58433e");for(let row=0;row<4;row++){const off=row%2?16:0;for(let col=-1;col<5;col++){const x=col*32+off+1,y=row*16+1,colr=shade(0x9f5748,.87+rnd(col,row,seed)*.24);rect(ctx,x,y,30,14,"#634039");rect(ctx,x+1,y+1,28,12,colr);rect(ctx,x+3,y+2,22,2,"#c47b65");for(let k=0;k<6;k++)pixel(ctx,x+3+(rnd(k,col,seed+1)*23|0),y+4+(rnd(k,row,seed+2)*6|0),"#d08a72",.7);}}}
+function ore(ctx,seed,accent){stone(ctx,seed,0x777d80);const a=h(c(accent));for(let i=0;i<17;i++){let x=2+(rnd(i,2,seed+1)*60|0),y=2+(rnd(i,7,seed+2)*60|0);for(let k=0;k<5+(rnd(i,3,seed+3)*6|0);k++){rect(ctx,x,y,1+(k%3===0?1:0),1,a);x+=rnd(i,k,seed+4)>.6?1:-1;if(rnd(k,i,seed+5)>.7)y++;}}}
+function snow(ctx,seed){noiseBase(ctx,0xeaf4f6,seed,.05);for(let i=0;i<170;i++)pixel(ctx,rnd(i,1,seed+1)*64|0,rnd(i,4,seed+2)*64|0,i%3?"#ffffff":"#c9dfe4",.85);}
+function moss(ctx,seed){noiseBase(ctx,0x456e3c,seed,.2);for(let i=0;i<280;i++){const x=rnd(i,2,seed+1)*64|0,y=rnd(i,6,seed+2)*64|0;rect(ctx,x,y,1+(i%9===0?2:0),1,i%3===0?"#83ad55":i%2?"#28552c":"#5c8c42");}}
+function paint(ctx,id,face,seed,def){
+ if(id==="grass")return grass(ctx,face,seed);if(id==="dirt")return soil(ctx,seed);if(id==="stone")return stone(ctx,seed);if(id==="cobblestone")return cobble(ctx,seed);if(id==="oak_log")return logTexture(ctx,face,seed);if(id==="oak_planks")return planks(ctx,face,seed);if(id==="leaves")return foliage(ctx,seed);if(id==="sand")return sand(ctx,seed);if(id==="glass")return glass(ctx);if(id==="bricks")return bricks(ctx,seed);
+ if(id==="coal_ore")return ore(ctx,seed,0x272b2d);if(id==="iron_ore")return ore(ctx,seed,0xb68c72);if(id==="gold_ore")return ore(ctx,seed,0xe8c23f);if(id==="diamond_ore")return ore(ctx,seed,0x3cd9ce);
+ if(id==="bedrock"){stone(ctx,seed,0x34383b);for(let i=0;i<36;i++)rect(ctx,rnd(i,1,seed)*64|0,rnd(i,4,seed+1)*64|0,3,1,"#191d1f");return;}
+ if(id==="water"){noiseBase(ctx,0x347eb7,seed,.1);for(let y=5;y<64;y+=13)stroke(ctx,0,y,64,y+Math.sin(y)*2,"#82c6e5",1,.4);return;}
+ if(id==="torch"){noiseBase(ctx,0x553b27,seed,.08);rect(ctx,28,4,8,45,"#76502d");rect(ctx,30,5,2,42,"#c18a4c");rect(ctx,24,3,16,13,"#f0a53d");rect(ctx,27,0,10,7,"#ffe18a");return;}
+ if(id==="crafting_table"){planks(ctx,face,seed);if(face==="top"){rect(ctx,7,7,50,50,"#81542e");for(let i=0;i<4;i++){rect(ctx,10+i*13,10,1,44,"#d3a263");rect(ctx,10,10+i*13,44,1,"#d3a263");}rect(ctx,26,26,12,12,"#563a27");}return;}
+ if(id==="furnace"){stone(ctx,seed,0x777b7e);if(face==="front"||face==="back"){rect(ctx,12,9,40,47,"#313638");rect(ctx,17,14,30,31,"#171d1f");rect(ctx,21,39,22,12,"#a45225");rect(ctx,26,31,12,12,"#f0a13e");rect(ctx,29,27,6,13,"#ffd36b");}return;}
+ if(id==="chest"){planks(ctx,face,seed);if(face==="front"||face==="back"){rect(ctx,0,10,64,7,"#b8863e");rect(ctx,0,47,64,7,"#9b7137");rect(ctx,26,24,12,17,"#d5b15b");rect(ctx,30,27,5,9,"#4a4030");}return;}
+ if(id==="clay"){noiseBase(ctx,0x9cabb5,seed,.12);for(let i=0;i<85;i++)pixel(ctx,rnd(i,1,seed+1)*64|0,rnd(i,3,seed+2)*64|0,i%2?"#b9c6cd":"#7e929e",.65);return;}
+ noiseBase(ctx,def.color||0x777777,seed,.13);
+}
+export function makeBlockTexture(def,face="side"){
+ const canvas=document.createElement("canvas");canvas.width=64;canvas.height=64;
+ const transparent=def.id==="leaves"||def.id==="glass",ctx=canvas.getContext("2d",{alpha:transparent});ctx.imageSmoothingEnabled=false;
+ const seed=(def.color||0)+def.id.length*73+face.length*19;paint(ctx,def.id,face,seed,def);
+ const texture=new THREE.CanvasTexture(canvas);texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestMipmapLinearFilter;texture.generateMipmaps=true;texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.userData={resolution:64,blockId:def.id,face};return texture;
+}
