@@ -62,7 +62,7 @@ test("biomes and shorelines return valid surface definitions",()=>{
 
 test("river and lake beds rise smoothly into shallow shores at the water line",()=>{
  for(const [core,fade] of [[13.5,24],[13.0,22],[10.5,20],[11.0,21]]){
-  const heights=[0,1,2,core,core+1,fade].map(d=>waterBankHeight(d,18,core,fade,2.3,5.0));
+  const heights=[0,1,2,core,core+1,fade].map(d=>waterBankHeight(d,18,core,fade,2.3,4.45));
   for(let i=1;i<heights.length;i++)assert.ok(heights[i]>=heights[i-1],"shore should never descend outwards");
   assert.ok(heights[0]<=3);assert.ok(heights[3]<=5);assert.equal(heights[5],18);
  }
@@ -83,9 +83,20 @@ test("the river centerline and lake cores generate connected natural water colum
  }
 });
 test("waterline terrain reaches the same block height at the dry bank",()=>{
- const bed=waterBankHeight(0,16,13.5,24,2.2,5);
- const nearBank=waterBankHeight(9.5,16,13.5,24,2.2,5);
- const dryBank=waterBankHeight(13.5,16,13.5,24,2.2,5);
+ const bed=waterBankHeight(0,16,13.5,24,2.2,4.45);
+ const nearBank=waterBankHeight(9.5,16,13.5,24,2.2,4.45);
+ const dryBank=waterBankHeight(13.5,16,13.5,24,2.2,4.45);
  assert.ok(bed<nearBank);
- assert.equal(dryBank,5);
+ assert.equal(dryBank,4);
+});
+
+test("the full carved river width is water-filled, not left as an empty sand trench",()=>{
+ const seed=20261109;
+ const x=12,center=riverCenterAt(x,seed);
+ const inside=terrainSample(x,Math.round(center+12),seed);
+ const edge=terrainSample(x,Math.round(center+14),seed);
+ assert.equal(inside.isWaterColumn,true);
+ assert.ok(inside.height<WATER_LEVEL);
+ assert.equal(edge.isWaterColumn,false);
+ assert.ok(edge.height>=4);
 });
