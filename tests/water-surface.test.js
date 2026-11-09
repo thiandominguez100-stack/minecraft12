@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {buildWaterSurface,waterCornerY,waterSurfaceY} from "../src/water-surface.js";
-const GRID=4,key=(x,y,z)=>x+","+y+","+z;
+const GRID=3,key=(x,y,z)=>x+","+y+","+z;
 class SurfaceWorld{
  constructor(){this.blocks=new Map();this.waterSources=new Set();this.waterStates=new Map();}
  get(x,y,z){return this.blocks.get(key(x,y,z))||null;}
