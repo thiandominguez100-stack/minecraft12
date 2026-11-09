@@ -14,12 +14,13 @@ import {saveGame,loadGame,deleteSave} from "./storage.js";
 const $=id=>document.getElementById(id);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8bc7e7);
-scene.fog=new THREE.Fog(0x8bc7e7,78,210);
+scene.fog=new THREE.Fog(0x8bc7e7,68,138);
 const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,260);
 const playerPosition=new THREE.Vector3(31,13,31);
 scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
-renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
+const maxPixelRatio=Math.min(devicePixelRatio||1,1.25);let adaptivePixelRatio=maxPixelRatio,adaptiveRenderDistance=6.5;
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(adaptivePixelRatio);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
 const armRig=new THREE.Group();armRig.position.set(.49,-.56,-.84);camera.add(armRig);
 const sleeveMaterial=new THREE.MeshLambertMaterial({color:0x47677c});
 const skinMaterial=new THREE.MeshLambertMaterial({color:0xc99575});
@@ -66,7 +67,7 @@ function applyCameraView(){
  const focus=playerPosition.clone();focus.y-=.58;
  const direction=new THREE.Vector3(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)).multiplyScalar(viewMode===1?-1:1).normalize();
  const distance=5.35;cameraCollisionRay.set(focus,direction);cameraCollisionRay.far=distance;
- const hits=cameraCollisionRay.intersectObjects(world.group.children,true).filter(hit=>hit.object.userData.blockId!=="water");
+ const hits=cameraCollisionRay.intersectObjects(world.getNearbyChunkGroups(playerPosition.x,playerPosition.z,2),true).filter(hit=>hit.object.userData.blockId!=="water");
  const safeDistance=hits.length?Math.max(.72,Math.min(distance,hits[0].distance-.28)):distance;
  camera.position.copy(focus).addScaledVector(direction,safeDistance);camera.lookAt(focus);
 }
@@ -80,6 +81,7 @@ let craftingStationOpen=false,activeCraftCell=null;
 let yaw=0,pitch=0,velocity=new THREE.Vector3();
 const physics=new FirstPersonPhysics();
 const keys={},ray=new THREE.Raycaster(),cameraCollisionRay=new THREE.Raycaster();ray.far=6;
+let performanceElapsed=0,performanceFrames=0,estimatedFPS=60,mobUpdateElapsed=0;
 let leftDown=false,brokenThisPress=false,miningKey="",miningProgress=0,lastSave=0,lastHunger=0,toastTimer=0;
 let targetHit=null,targetMob=null,toastTimerId=0;
 const rainCount=520,rainPositions=new Float32Array(rainCount*3);
@@ -87,6 +89,17 @@ for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*152;rainPosit
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
 const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xc9dceb,size:.09,transparent:true,opacity:.56}));rain.visible=false;scene.add(rain);
 
+function samplePerformance(dt){
+ performanceElapsed+=dt;performanceFrames++;
+ if(performanceElapsed<2)return;
+ estimatedFPS=performanceFrames/performanceElapsed;
+ performanceElapsed=0;performanceFrames=0;
+ if(estimatedFPS<36)adaptivePixelRatio=Math.max(.82,adaptivePixelRatio-.10);
+ else if(estimatedFPS<46)adaptivePixelRatio=Math.max(.90,adaptivePixelRatio-.05);
+ else if(estimatedFPS>56)adaptivePixelRatio=Math.min(maxPixelRatio,adaptivePixelRatio+.04);
+ renderer.setPixelRatio(adaptivePixelRatio);
+ adaptiveRenderDistance=estimatedFPS<34?5.0:estimatedFPS<43?5.6:estimatedFPS<52?6.0:6.5;
+}
 function notify(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimerId);toastTimerId=setTimeout(()=>el.classList.remove("show"),2100)}
 function setOverlay(id,show){$(id).style.display=show?"flex":"none";uiOpen=show||["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex");if(show&&document.pointerLockElement)document.exitPointerLock()}
 function requestLock(){if(started&&!uiOpen)renderer.domElement.requestPointerLock()}
@@ -153,11 +166,11 @@ function save(){
  const ok=saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:playerPosition.toArray(),viewMode,dayTime,weather,health,hunger,waterSources:fluid.exportSources(),drops:drops.serialize()});
  if(ok)notify("Mundo guardado en este navegador.");else notify("No se pudo guardar. Comprueba el almacenamiento del navegador.");
 }
-function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,true).filter(hit=>hit.object.userData.blockId!=="water");return hits.length?hits[0]:null}
+function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.getNearbyChunkGroups(playerPosition.x,playerPosition.z,2),true).filter(hit=>hit.object.userData.blockId!=="water");return hits.length?hits[0]:null}
 function updateAim(){
  scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
  ray.setFromCamera(new THREE.Vector2(0,0),camera);
- const blocks=ray.intersectObjects(world.group.children,true).filter(hit=>hit.object.userData.blockId!=="water"),blockHit=blocks.length?blocks[0]:null;
+ const blocks=ray.intersectObjects(world.getNearbyChunkGroups(playerPosition.x,playerPosition.z,2),true).filter(hit=>hit.object.userData.blockId!=="water"),blockHit=blocks.length?blocks[0]:null;
  const creature=mobs?.pick(ray);
  if(creature&&(!blockHit||creature.distance<blockHit.distance)){targetMob=creature.mob;targetHit=null}
  else{targetMob=null;targetHit=blockHit}
@@ -443,7 +456,8 @@ if(!loadGame())$("resume-save").disabled=true;
 
 function tick(now){
  requestAnimationFrame(tick);const dt=Math.min((now-(tick.last||now))/1000,.05);tick.last=now;
- if(mobs)mobs.update(dt,now/1000);
+ samplePerformance(dt);
+ if(mobs){mobUpdateElapsed+=dt;if(mobUpdateElapsed>=1/30){mobs.update(mobUpdateElapsed,now/1000);mobUpdateElapsed=0;}}
  if(!started){const orbit=now*.000045;camera.position.set(Math.cos(orbit)*33,12+Math.sin(orbit*.7)*1.2,Math.sin(orbit)*33);camera.lookAt(0,4,0)}
  armRig.visible=started&&locked&&!uiOpen&&viewMode===0;
  if(armRig.visible){
@@ -469,7 +483,9 @@ function tick(now){
     health=clamp(health-4,0,20);updateVitals();notify("Caída: has regresado al punto de aparición.");
    }
   }
-  playerPosition.copy(camera.position);updateAvatar(now);applyCameraView();
+  playerPosition.copy(camera.position);
+  if(world.updateRenderDistance(playerPosition.x,playerPosition.z,adaptiveRenderDistance)){scene.fog.near=adaptiveRenderDistance*16*.56;scene.fog.far=adaptiveRenderDistance*16*1.18;}
+  updateAvatar(now);applyCameraView();
   updateAim();mineTarget(dt);
   $("coords").textContent="X: "+playerPosition.x.toFixed(1)+" · Y: "+playerPosition.y.toFixed(1)+" · Z: "+playerPosition.z.toFixed(1)+(physics.inWater?(world.isEyeUnderwater(playerPosition)?" · SUMERGIDO":" · NADANDO"):"");
   $("underwater-overlay").classList.toggle("active",world.isEyeUnderwater(playerPosition));
@@ -481,4 +497,4 @@ function tick(now){
  renderer.render(scene,camera);
 }
 requestAnimationFrame(tick);
-window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6))});
+window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(adaptivePixelRatio)});
