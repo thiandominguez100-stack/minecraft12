@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP,ITEMS,ITEM_MAP,RECIPES,clamp} from "./data.js";
 import {VoxelWorld} from "./world.js";
+import {MobSystem} from "./mobs.js";
 import {Inventory} from "./inventory.js";
 import {saveGame,loadGame,deleteSave} from "./storage.js";
 
@@ -14,6 +15,8 @@ renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(deviceP
 const skyLight=new THREE.HemisphereLight(0xd9efff,0x66704c,1.7);scene.add(skyLight);
 const sun=new THREE.DirectionalLight(0xffefca,2.1);sun.position.set(-28,42,18);scene.add(sun);
 let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival");
+let mobs=new MobSystem(scene,world,world.seed);
+camera.position.set(31,13,31);camera.lookAt(0,4,0);
 let mode="survival",started=false,locked=false,uiOpen=false,dayTime=.25,weather="clear",health=20,hunger=20,selectedTab="items";
 let yaw=0,pitch=0,velocity=new THREE.Vector3(),onGround=false,spaceWasDown=false;
 const keys={},ray=new THREE.Raycaster();ray.far=6;
@@ -37,19 +40,50 @@ function renderHotbar(){
  }
 }
 function setMode(next){mode=next;inventory.setMode(next);$("mode-label").textContent=next==="creative"?"CREATIVO":"SUPERVIVENCIA";$("vitals").style.display=next==="creative"?"none":"flex";renderHotbar();notify("Modo de juego: "+(next==="creative"?"Creativo":"Supervivencia"))}
-function newWorld(nextMode){
- scene.remove(world.group);world=new VoxelWorld(scene,Math.floor(100000+Math.random()*900000000));inventory=new Inventory(nextMode);setMode(nextMode);
+function showLoading(title){
+ const screen=$("loading-screen");screen.style.display="flex";
+ $("loading-title").textContent=title||"Preparando tu mundo";
+ $("loading-detail").textContent="Inicializando recursos...";
+ $("loading-fill").style.width="2%";$("loading-percent").textContent="2%";
+}
+function updateLoading(progress,detail){
+ const value=Math.max(0,Math.min(100,Math.round(progress)));
+ $("loading-fill").style.width=value+"%";$("loading-percent").textContent=value+"%";
+ $("loading-detail").textContent=detail||"Cargando...";
+}
+async function replaceWorld(seed,changes=[]){
+ showLoading("Generando un nuevo mundo");
+ if(mobs)mobs.dispose();
+ scene.remove(world.group);
+ world=new VoxelWorld(scene,seed,{defer:true});
+ await world.generateAsync(updateLoading);
+ if(changes.length)world.importChanges(changes);
+ mobs=new MobSystem(scene,world,seed);
+ updateLoading(100,"Mundo listo");
+ await new Promise(resolve=>setTimeout(resolve,220));
+ $("loading-screen").style.display="none";
+}
+async function newWorld(nextMode){
+ started=false;leftDown=false;miningProgress=0;
+ const seed=Math.floor(100000+Math.random()*900000000);
+ await replaceWorld(seed);
+ inventory=new Inventory(nextMode);setMode(nextMode);
  if(nextMode==="creative"){ITEMS.slice(0,36).forEach((it,i)=>inventory.slots[i]={id:it.id,count:it.kind==="tool"?1:64,...(it.kind==="tool"?{durability:it.durability}:{})})}
  else{inventory.add("apple",2);inventory.add("bread",3)}
- const h=world.highest(0,0);camera.position.set(0,h+2.12,0);velocity.set(0,0,0);health=20;hunger=20;dayTime=.25;weather="clear";started=true;leftDown=false;miningProgress=0;
- $("start-screen").style.display="none";setOverlay("pause-overlay",false);renderHotbar();renderInventory();notify("Mundo nuevo creado · Semilla "+world.seed);save();
+ const h=world.highest(0,0);camera.position.set(0,h+2.12,0);camera.rotation.set(0,0,0);yaw=0;pitch=0;
+ velocity.set(0,0,0);health=20;hunger=20;dayTime=.25;weather="clear";started=true;
+ $("start-screen").style.display="none";setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Mundo creado · Semilla "+world.seed);save();
 }
-function loadIntoGame(data){
+async function loadIntoGame(data){
  if(!data){notify("No se encontró una partida guardada.");return}
- scene.remove(world.group);world=new VoxelWorld(scene,Number(data.seed)||20261109);world.importChanges(data.changes||[]);
- inventory=new Inventory(data.mode||"survival");inventory.restore(data.inventory||[]);inventory.selected=clamp(data.selected||0,0,8);setMode(data.mode==="creative"?"creative":"survival");
+ started=false;
+ await replaceWorld(Number(data.seed)||20261109,data.changes||[]);
+ inventory=new Inventory(data.mode||"survival");inventory.restore(data.inventory||[]);inventory.selected=clamp(data.selected||0,0,8);
+ setMode(data.mode==="creative"?"creative":"survival");
  if(Array.isArray(data.position)&&data.position.length===3)camera.position.set(...data.position);else camera.position.set(0,world.highest(0,0)+2.12,0);
- dayTime=Number(data.dayTime)||.25;weather=data.weather||"clear";health=data.health??20;hunger=data.hunger??20;started=true;$("start-screen").style.display="none";setOverlay("pause-overlay",false);renderHotbar();renderInventory();notify("Partida cargada correctamente.");requestLock();
+ camera.rotation.set(0,0,0);yaw=0;pitch=0;
+ dayTime=Number(data.dayTime)||.25;weather=data.weather||"clear";health=data.health??20;hunger=data.hunger??20;
+ started=true;$("start-screen").style.display="none";setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Partida cargada correctamente.");requestLock();
 }
 function save(){
  if(!started)return;
@@ -204,6 +238,8 @@ if(!loadGame())$("resume-save").disabled=true;
 
 function tick(now){
  requestAnimationFrame(tick);const dt=Math.min((now-(tick.last||now))/1000,.05);tick.last=now;
+ if(mobs)mobs.update(dt,now/1000);
+ if(!started){const orbit=now*.000045;camera.position.set(Math.cos(orbit)*33,12+Math.sin(orbit*.7)*1.2,Math.sin(orbit)*33);camera.lookAt(0,4,0)}
  if(started&&locked){
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0),side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const dir=new THREE.Vector3(side,0,-forward);if(dir.lengthSq()>0)dir.normalize().applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
