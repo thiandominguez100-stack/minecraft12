@@ -1,6 +1,6 @@
 # BlockWorld 3D
 
-**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 1.5.1**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
+**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 1.5.2**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
 
 ## Play with GitHub Pages
 
@@ -196,7 +196,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Kept the existing fluid simulation for flowing, falling, swimming and water placement; only the visual surface renderer was replaced.
 - Added tests for visible top faces, continuous neighboring surfaces, correct waterline height and real water-block volume in generated river/lake basins.
 
-## Alpha 1.5.1 — lower, gently animated water
+## Alpha 1.5.2 — lower, gently animated water
 
 - Lowered the natural river/lake waterline from block level 5 to block level 4, reducing the visible water volume by one voxel layer while preserving the existing shoreline alignment and swimming/submersion tests.
 - Rebuilt each exposed water top into a 3 × 3 grid per cell. A shared world-space wave function gently displaces the grid vertices, so wave motion stays continuous across adjacent cells and chunk borders.
@@ -204,7 +204,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Kept an opaque, depth-tested, unlit water material as the stable visibility baseline.
 - Old saves migrate natural source coordinates from the previous y=5 waterline so the lowered river does not reactivate legacy high-level sources.
 
-## Alpha 1.5.1 — chunk meshing and engine optimization
+## Alpha 1.5.2 — chunk meshing and engine optimization
 
 - Replaced per-block InstancedMesh batches with greedy meshing. Adjacent coplanar faces of the same block material are merged into larger rectangles; fully hidden faces between opaque voxels are omitted.
 - Each chunk now emits one combined geometry per visible block material with six face-material groups, repeated UVs preserving the 64 × 64 texture scale, and a compact triangle index buffer.
@@ -216,10 +216,19 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - The HUD performance indicator now also reports actual Three.js draw-call count.
 - Added regression tests for face culling, merged rectangles, transparent block boundaries, chunk-edge neighbor visibility, repeated texture UVs and material group coverage.
 
-## Alpha 1.5.1 — block atlas batching
+## Alpha 1.5.2 — block atlas batching
 
 - Packed all 138 block-face textures into one shared 16 × 16 atlas at 64 × 64 pixels per tile.
 - Added per-vertex atlas rectangles and a small material UV transform so merged rectangles repeat their own block tile rather than stretching the texture across the entire face.
 - Combined all opaque voxel types in each chunk into one mesh/material, with separate cutout foliage and transparent glass batches. This reduces block render submissions from up to six material groups per block type to at most three per chunk.
 - Reused the atlas and its materials across world instances instead of rebuilding per-block texture/material objects for each world.
 - Added tests for atlas tile uniqueness, UV bounds, category batching, vertex atlas assignment and index offsets.
+
+## Alpha 1.5.2 — lightweight creatures and safe spawn
+
+- Creature bodies and heads are merged into one geometry per pivot, preserving head rotation and per-creature hit-flash materials.
+- Four animated legs are now one InstancedMesh with four transforms, reducing leg draw submissions from four to one per creature.
+- Creature hitboxes are now raycastable Object3D volumes rather than invisible Mesh objects, so they do not generate rendering submissions.
+- Static creature geometries are disposed when a mob is removed or the mob system is cleared.
+- New worlds and spawn commands search for a clear, dry grass/sand surface instead of automatically placing the player at the origin in a river. Saved positions remain unchanged; fallback position is recalculated only when a save has no position.
+- Added tests for dry spawn selection, obstacle avoidance, grass/sand preference and creature renderable-mesh budgets.

@@ -2,8 +2,7 @@ import * as THREE from "three";
 import {WORLD_MIN_X,WORLD_MIN_Z,WORLD_MAX_X,WORLD_MAX_Z,WORLD_WIDTH,WORLD_DEPTH} from "./terrain.js";
 
 const seeded=(n)=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
-const sharedMaterials=new Map(),atlasTextures=new Map(),cubeGeometries=new Map(),hitboxGeometries=new Map();
-const hitboxMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,colorWrite:false,depthWrite:false});
+const sharedMaterials=new Map(),atlasTextures=new Map(),cubeGeometries=new Map();
 function material(color){
  const key=Number(color).toString(16);
  if(!sharedMaterials.has(key))sharedMaterials.set(key,new THREE.MeshLambertMaterial({color,flatShading:true}));
@@ -40,17 +39,89 @@ function creatureAtlas(type){
   texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=false;atlasTextures.set(type,texture);
   return new THREE.MeshLambertMaterial({map:texture,flatShading:true});
 }
-function cube(parent,mat,size,position,uvRect=[0,0,1,1]){
-  const geometryKey=[...size,...uvRect].map(v=>Number(v).toFixed(3)).join(":");
-  let geometry=cubeGeometries.get(geometryKey);
-  if(!geometry){
-    geometry=new THREE.BoxGeometry(size[0],size[1],size[2]);const uv=geometry.attributes.uv;
-    for(let i=0;i<uv.count;i++)uv.setXY(i,uvRect[0]+uv.getX(i)*(uvRect[2]-uvRect[0]),uvRect[1]+uv.getY(i)*(uvRect[3]-uvRect[1]));
-    uv.needsUpdate=true;cubeGeometries.set(geometryKey,geometry);
-  }
-  const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=false;
-  parent.add(mesh);return mesh;
+function getCubeGeometry(size,uvRect=[0,0,1,1]){
+ const geometryKey=[...size,...uvRect].map(v=>Number(v).toFixed(3)).join(":");
+ let geometry=cubeGeometries.get(geometryKey);
+ if(!geometry){
+  geometry=new THREE.BoxGeometry(size[0],size[1],size[2]);const uv=geometry.attributes.uv;
+  for(let i=0;i<uv.count;i++)uv.setXY(i,uvRect[0]+uv.getX(i)*(uvRect[2]-uvRect[0]),uvRect[1]+uv.getY(i)*(uvRect[3]-uvRect[1]));
+  uv.needsUpdate=true;cubeGeometries.set(geometryKey,geometry);
+ }
+ return geometry;
 }
+function cube(parent,mat,size,position,uvRect=[0,0,1,1]){
+ const mesh=new THREE.Mesh(getCubeGeometry(size,uvRect),mat);
+ mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=false;
+ parent.add(mesh);return mesh;
+}
+function mergeStaticMeshes(parent){
+ const meshes=parent.children.filter(child=>child.isMesh&&!child.isInstancedMesh);
+ if(meshes.length<2)return meshes.map(mesh=>mesh.geometry);
+ const grouped=new Map();
+ for(const mesh of meshes){
+  mesh.updateMatrix();
+  let batch=grouped.get(mesh.material);
+  if(!batch){batch={positions:[],normals:[],uvs:[],indices:[]};grouped.set(mesh.material,batch);}
+  const geometry=mesh.geometry,position=geometry.attributes.position,normal=geometry.attributes.normal,uv=geometry.attributes.uv;
+  const vertexOffset=batch.positions.length/3,normalMatrix=new THREE.Matrix3().getNormalMatrix(mesh.matrix),temp=new THREE.Vector3(),tempNormal=new THREE.Vector3();
+  for(let i=0;i<position.count;i++){
+   temp.fromBufferAttribute(position,i).applyMatrix4(mesh.matrix);batch.positions.push(temp.x,temp.y,temp.z);
+   if(normal){tempNormal.fromBufferAttribute(normal,i).applyMatrix3(normalMatrix).normalize();batch.normals.push(tempNormal.x,tempNormal.y,tempNormal.z);}
+   if(uv)batch.uvs.push(uv.getX(i),uv.getY(i));else batch.uvs.push(0,0);
+  }
+  const index=geometry.index;
+  if(index)for(let i=0;i<index.count;i++)batch.indices.push(index.getX(i)+vertexOffset);
+  else for(let i=0;i<position.count;i++)batch.indices.push(i+vertexOffset);
+ }
+ const materialList=[...grouped.keys()],combinedGeometry=new THREE.BufferGeometry();
+ const positions=[],normals=[],uvs=[],indices=[];
+ for(const [material,batch] of grouped){
+  const start=indices.length,offset=positions.length/3;
+  positions.push(...batch.positions);normals.push(...batch.normals);uvs.push(...batch.uvs);
+  for(const index of batch.indices)indices.push(index+offset);
+  combinedGeometry.addGroup(start,batch.indices.length,materialList.indexOf(material));
+ }
+ combinedGeometry.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
+ if(normals.length===positions.length)combinedGeometry.setAttribute("normal",new THREE.Float32BufferAttribute(normals,3));
+ else combinedGeometry.computeVertexNormals();
+ combinedGeometry.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
+ combinedGeometry.setIndex(indices);combinedGeometry.computeBoundingSphere();
+ for(const mesh of meshes)parent.remove(mesh);
+ const combined=new THREE.Mesh(combinedGeometry,materialList);
+ combined.castShadow=false;combined.receiveShadow=false;combined.userData.mergedCreatureParts=true;parent.add(combined);
+ return [combinedGeometry];
+}
+function updateLegInstances(mob,walking,swing){
+ const scale=mob.legScale,positions=mob.legPositions,offset=mob.legOffset;
+ for(let i=0;i<4;i++){
+  const [x,z]=positions[i],angle=walking?swing*(i%2===0?1:-1):swing*.12;
+  mob.legDummy.position.set(x*scale,.48*scale,z*scale);
+  mob.legDummy.rotation.set(angle,0,0);mob.legDummy.updateMatrix();
+  mob.legMatrix.copy(mob.legDummy.matrix).multiply(offset);
+  mob.legMesh.setMatrixAt(i,mob.legMatrix);
+ }
+ mob.legMesh.instanceMatrix.needsUpdate=true;
+}
+function makeMobHitbox(type){
+ const size=type==="chicken"?[.9,1.9,1]:[1.05,1.9,1.2];
+ const hitbox=new THREE.Object3D();hitbox.position.y=.95;
+ hitbox.userData.localBox=new THREE.Box3(
+  new THREE.Vector3(-size[0]/2,-size[1]/2,-size[2]/2),
+  new THREE.Vector3(size[0]/2,size[1]/2,size[2]/2)
+ );
+ hitbox.raycast=function(raycaster,intersections){
+  const inverse=new THREE.Matrix4().copy(this.matrixWorld).invert();
+  const localRay=raycaster.ray.clone().applyMatrix4(inverse);
+  const localPoint=localRay.intersectBox(this.userData.localBox,new THREE.Vector3());
+  if(!localPoint)return;
+  const point=localPoint.applyMatrix4(this.matrixWorld);
+  const distance=raycaster.ray.origin.distanceTo(point);
+  if(distance<raycaster.near||distance>raycaster.far)return;
+  intersections.push({distance,point,object:this});
+ };
+ return hitbox;
+}
+
 export class MobSystem{
   constructor(scene,world,seed=1){this.scene=scene;this.world=world;this.seed=seed;this.mobs=[];this.clock=0;this.spawn();}
   spawn(){
@@ -82,6 +153,9 @@ export class MobSystem{
       cube(bodyGroup,palette.accent,[.2,.18,.04],[.25,-.08,-.59]);
       cube(bodyGroup,palette.accent,[.12,.18,.04],[-.2,-.2,-.35]);
     }
+    if(type==="cow"||type==="sheep"){
+      const tail=cube(bodyGroup,palette.leg,[.09,.42,.09],[0,.10*scale,-.67*scale]);tail.rotation.x=-.35;
+    }
     const headPivot=new THREE.Group();headPivot.position.set(0,.22*scale,.72*scale);bodyGroup.add(headPivot);
     cube(headPivot,palette.head,[.42*scale,.42*scale,.42*scale],[0,0,.08*scale],[.5,0,.75,.5]);
     if(type==="cow"){
@@ -94,27 +168,24 @@ export class MobSystem{
       cube(headPivot,palette.accent,[.08,.19,.09],[0,.28,.02]);cube(headPivot,material(0xe5b338),[.2,.12,.22],[0,-.06,.27]);
       cube(headPivot,material(0x272727),[.04,.04,.03],[-.1,.03,.25]);cube(headPivot,material(0x272727),[.04,.04,.03],[.1,.03,.25]);
     }
-    const legs=[],positions=[[-.25,-.3],[.25,-.3],[-.25,.32],[.25,.32]];
-    for(let i=0;i<4;i++){
-      const pivot=new THREE.Group();pivot.position.set(positions[i][0]*scale,.48*scale,positions[i][1]*scale);root.add(pivot);
-      cube(pivot,palette.leg,[.2*scale,.58*scale,.2*scale],[0,-.23*scale,0],[.75,0,1,.5]);legs.push(pivot);
-    }
-    if(type==="cow"||type==="sheep"){
-      const tail=cube(root,palette.leg,[.09,.42,.09],[0,.88*scale,-.67*scale]);tail.rotation.x=-.35;
-    }
-    const hitSize=type==="chicken"?[.9,1.9,1]:[1.05,1.9,1.2],hitKey=type;
-    if(!hitboxGeometries.has(hitKey))hitboxGeometries.set(hitKey,new THREE.BoxGeometry(...hitSize));
-    const hitbox=new THREE.Mesh(hitboxGeometries.get(hitKey),hitboxMaterial);
-    hitbox.position.y=.95;root.add(hitbox);
+    const legPositions=[[-.25,-.3],[.25,-.3],[-.25,.32],[.25,.32]];
+    const legGeometry=getCubeGeometry([.2*scale,.58*scale,.2*scale],[.75,0,1,.5]);
+    const legMesh=new THREE.InstancedMesh(legGeometry,palette.leg,4);
+    legMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);legMesh.castShadow=false;legMesh.receiveShadow=false;root.add(legMesh);
+    const hitbox=makeMobHitbox(type);root.add(hitbox);
     const mob={
-      type,root,bodyGroup,headPivot,legs,index,atlas,hitbox,
+      type,root,bodyGroup,headPivot,legMesh,legPositions,legScale:scale,
+      legDummy:new THREE.Object3D(),legMatrix:new THREE.Matrix4(),
+      legOffset:new THREE.Matrix4().makeTranslation(0,-.23*scale,0),
+      staticGeometries:[...mergeStaticMeshes(bodyGroup),...mergeStaticMeshes(headPivot)],
+      index,atlas,hitbox,
       hp:type==="chicken"?2:4,maxHp:type==="chicken"?2:4,
       drop:type==="sheep"?"wool":type==="cow"?"raw_beef":"raw_chicken",
       phase:seeded(index+this.seed)*Math.PI*2,state:"idle",timer:1+seeded(index+9)*3,
       target:new THREE.Vector3(x,y,z),origin:new THREE.Vector3(x,y,z),speed:type==="chicken"?1.05:.72,
       knockback:new THREE.Vector3(),hitFlash:0
     };
-    hitbox.userData.mob=mob;return mob;
+    hitbox.userData.mob=mob;updateLegInstances(mob,false,0);return mob;
   }
   pick(raycaster){
     const candidates=this.mobs.filter(m=>m.hp>0&&m.root.visible).map(m=>m.hitbox);
@@ -131,7 +202,7 @@ export class MobSystem{
     mob.target.copy(mob.root.position).addScaledVector(away,4.5);
     mob.state="flee";mob.timer=2.5;
     if(mob.hp<=0){
-      this.scene.remove(mob.root);
+      this.scene.remove(mob.root);mob.staticGeometries.forEach(geometry=>geometry.dispose());
       mob.atlas.dispose();
       const index=this.mobs.indexOf(mob);if(index>=0)this.mobs.splice(index,1);
       return {type:mob.type,hp:0,removed:true,drop:mob.drop};
@@ -173,7 +244,7 @@ export class MobSystem{
       let walking=false;
       if(mob.state==="walk"||mob.state==="flee"){
         const dx=mob.target.x-mob.root.position.x,dz=mob.target.z-mob.root.position.z,distance=Math.hypot(dx,dz);
-        if(distance<.22){mob.state="idle";mob.timer=1.5;mob.legs.forEach(leg=>leg.rotation.x=0);}
+        if(distance<.22){mob.state="idle";mob.timer=1.5;updateLegInstances(mob,false,0);}
         else{
           const speed=mob.speed*(mob.state==="flee"?2.8:1),step=Math.min(distance,speed*dt);
           const nx=mob.root.position.x+dx/distance*step,nz=mob.root.position.z+dz/distance*step;
@@ -183,13 +254,13 @@ export class MobSystem{
         }
       }
       const swing=walking?Math.sin(time*7+mob.phase)*.48:Math.sin(time*1.5+mob.phase)*.035;
-      mob.legs.forEach((leg,index)=>{leg.rotation.x=walking?swing*(index%2===0?1:-1):swing*.12;});
+      updateLegInstances(mob,walking,swing);
       mob.bodyGroup.position.y=(mob.type==="chicken"?.48:.78)+(walking?Math.abs(Math.sin(time*7+mob.phase))*.025:0);
       mob.headPivot.rotation.x=(mob.state==="idle"&&mob.type==="sheep"&&Math.sin(time*.7+mob.phase)>.65)?.18:Math.sin(time*1.1+mob.phase)*.025;
     }
   }
   dispose(){
-    for(const mob of this.mobs){this.scene.remove(mob.root);mob.atlas.dispose();}
+    for(const mob of this.mobs){this.scene.remove(mob.root);mob.staticGeometries.forEach(geometry=>geometry.dispose());mob.atlas.dispose();}
     this.mobs.length=0;
   }
 }

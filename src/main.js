@@ -9,6 +9,7 @@ import {ItemDropSystem} from "./drops.js";
 import {matchCraftingRecipe,getCraftingRecipes} from "./crafting.js";
 import {renderItemIcon} from "./item-icons.js";
 import {nextCameraView,cameraViewLabel} from "./view-mode.js";
+import {findSafeSpawn} from "./spawn.js";
 import {saveGame,loadGame,deleteSave} from "./storage.js";
 
 const $=id=>document.getElementById(id);
@@ -148,7 +149,7 @@ async function newWorld(nextMode){
  inventory=new Inventory(nextMode);setMode(nextMode);
  if(nextMode==="creative"){ITEMS.slice(0,36).forEach((it,i)=>inventory.slots[i]={id:it.id,count:it.kind==="tool"?1:64,...(it.kind==="tool"?{durability:it.durability}:{})})}
  else{inventory.add("apple",2);inventory.add("bread",3)}
- const h=world.highest(0,0);playerPosition.set(0,h+2.12,0);camera.position.copy(playerPosition);camera.rotation.set(0,0,0);yaw=0;pitch=0;viewMode=0;
+ const spawn=findSafeSpawn(world);playerPosition.set(spawn.x,spawn.y,spawn.z);camera.position.copy(playerPosition);camera.rotation.set(0,0,0);yaw=0;pitch=0;viewMode=0;
  velocity.set(0,0,0);physics.reset();physics.onGround=true;health=20;hunger=20;dayTime=.25;weather="clear";started=true;
  $("start-screen").style.display="none";$("hud").classList.remove("menu-hidden");setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Mundo creado · Semilla "+world.seed);save();
 }
@@ -159,7 +160,7 @@ async function loadIntoGame(data){
  inventory=new Inventory(data.mode||"survival");inventory.restore(data.inventory||[]);inventory.selected=clamp(data.selected||0,0,8);personalCraftGrid=Array(4).fill(null);workbenchCraftGrid=Array(9).fill(null);craftingStationOpen=false;activeCraftCell=null;
  physics.reset();velocity.set(0,0,0);
  setMode(data.mode==="creative"?"creative":"survival");
- if(Array.isArray(data.position)&&data.position.length===3)playerPosition.set(...data.position);else playerPosition.set(0,world.highest(0,0)+2.12,0);camera.position.copy(playerPosition);viewMode=Number.isInteger(data.viewMode)?clamp(data.viewMode,0,2):0;
+ if(Array.isArray(data.position)&&data.position.length===3)playerPosition.set(...data.position);else{const spawn=findSafeSpawn(world);playerPosition.set(spawn.x,spawn.y,spawn.z);}camera.position.copy(playerPosition);viewMode=Number.isInteger(data.viewMode)?clamp(data.viewMode,0,2):0;
  camera.rotation.set(0,0,0);yaw=0;pitch=0;
  dayTime=Number(data.dayTime)||.25;weather=data.weather||"clear";health=data.health??20;hunger=data.hunger??20;
  started=true;$("start-screen").style.display="none";$("hud").classList.remove("menu-hidden");setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Partida cargada correctamente.");requestLock();
@@ -409,7 +410,7 @@ function runCommand(raw){
  case"clear":inventory.slots=Array.from({length:36},()=>null);renderHotbar();renderInventory();commandOutput("Inventario vaciado.");break;
  case"save":save();commandOutput("Guardado solicitado.");break;
  case"seed":commandOutput("Semilla: "+world.seed);break;
- case"spawn":playerPosition.set(0,world.highest(0,0)+2.12,0);camera.position.copy(playerPosition);velocity.set(0,0,0);commandOutput("Volviste al punto de aparición.");break;
+ case"spawn":{const spawn=findSafeSpawn(world);playerPosition.set(spawn.x,spawn.y,spawn.z);camera.position.copy(playerPosition);velocity.set(0,0,0);commandOutput("Volviste al punto de aparición.");break;}
  default:commandOutput("Comando desconocido. Escribe /help.")
  }
 }
@@ -482,7 +483,7 @@ function tick(now){
   }else{
    physics.update(world,camera.position,velocity,{x:dir.x,z:dir.z,speed,jump:!!keys.Space,sprint:!!keys.ControlLeft,dive:!!keys.ShiftLeft},dt);
    if(camera.position.y< -12){
-    camera.position.set(0,world.highest(0,0)+2.12,0);velocity.set(0,0,0);physics.reset();physics.onGround=true;
+    const spawn=findSafeSpawn(world);camera.position.set(spawn.x,spawn.y,spawn.z);velocity.set(0,0,0);physics.reset();physics.onGround=true;
     health=clamp(health-4,0,20);updateVitals();notify("Caída: has regresado al punto de aparición.");
    }
   }
