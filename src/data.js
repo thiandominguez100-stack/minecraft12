@@ -40,7 +40,11 @@ export const ITEMS = [
   {id:"iron_pickaxe",name:"Pico de hierro",kind:"tool",group:"Herramientas",color:0xc3c9c9,stack:1,tool:"pickaxe",tier:3,durability:251},
   {id:"wooden_axe",name:"Hacha de madera",kind:"tool",group:"Herramientas",color:0xb68a51,stack:1,tool:"axe",tier:1,durability:60},
   {id:"wooden_shovel",name:"Pala de madera",kind:"tool",group:"Herramientas",color:0xb68a51,stack:1,tool:"shovel",tier:1,durability:60},
-  {id:"wooden_sword",name:"Espada de madera",kind:"tool",group:"Herramientas",color:0xb68a51,stack:1,tool:"sword",tier:1,durability:60}
+  {id:"wooden_sword",name:"Espada de madera",kind:"tool",group:"Herramientas",color:0xb68a51,stack:1,tool:"sword",tier:1,durability:60},
+  {id:"raw_mutton",name:"Carne cruda",kind:"food",group:"Comida",color:0xb85c55,stack:64,food:2},
+  {id:"raw_beef",name:"Carne cruda",kind:"food",group:"Comida",color:0x9e4544,stack:64,food:2},
+  {id:"raw_chicken",name:"Pollo crudo",kind:"food",group:"Comida",color:0xd99c79,stack:64,food:2},
+  {id:"wool",name:"Lana",kind:"material",group:"Materiales",color:0xe5e1d5,stack:64}
 ];
 
 export const RECIPES = [
