@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {matchCraftingRecipe,getCraftingRecipes} from "../src/crafting.js";
+import {ITEM_MAP} from "../src/data.js";
 
 test("personal 2x2 grid turns a log into four planks in any cell",()=>{
  const grid=[null,null,null,"oak_log"];
@@ -23,4 +24,8 @@ test("3x3 table crafting recognizes pickaxes, shovel, furnace and chest",()=>{
 test("workbench recipe book contains tools and basic survival stations",()=>{
  const ids=getCraftingRecipes("table").map(r=>r.id);
  for(const id of ["wooden_pickaxe","wooden_axe","wooden_shovel","wooden_sword","stone_pickaxe","iron_pickaxe","furnace","chest","torch"])assert.ok(ids.includes(id));
+});
+
+test("every crafting result exists in the item registry",()=>{
+ for(const station of ["personal","table"])for(const recipe of getCraftingRecipes(station))assert.ok(ITEM_MAP[recipe.output.id],"missing item "+recipe.output.id);
 });
