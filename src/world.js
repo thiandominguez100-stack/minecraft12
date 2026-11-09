@@ -41,10 +41,12 @@ export class VoxelWorld{
     this.waterMaterial.onBeforeCompile=(shader)=>{
       shader.uniforms.uWaterTime={value:0};
       shader.vertexShader=shader.vertexShader.replace("#include <common>","#include <common>"+String.fromCharCode(10)+"uniform float uWaterTime;"+String.fromCharCode(10)+"attribute float waterWave;");
-      shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>"+String.fromCharCode(10)+"float waveA=sin(position.x*0.62+uWaterTime*1.15);"+String.fromCharCode(10)+"float waveB=cos(position.z*0.54-uWaterTime*0.92);"+String.fromCharCode(10)+"transformed.y+=waterWave*(waveA*waveB)*0.022;");
+      shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>"+String.fromCharCode(10)+"float waveA=sin(position.x*1.12+uWaterTime*1.42);"+String.fromCharCode(10)+"float waveB=cos(position.z*0.88-uWaterTime*1.16);"+String.fromCharCode(10)+"float waveC=sin((position.x+position.z)*0.72-uWaterTime*0.78);"+String.fromCharCode(10)+"transformed.y+=waterWave*(waveA*waveB*0.032+waveC*0.012);");
+      shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>"+String.fromCharCode(10)+"uniform float uWaterTime;");
+      shader.fragmentShader=shader.fragmentShader.replace("#include <color_fragment>","#include <color_fragment>"+String.fromCharCode(10)+"float rippleA=sin((vUv.x*15.0+vUv.y*8.0)+uWaterTime*1.25);"+String.fromCharCode(10)+"float rippleB=cos((vUv.y*18.0-vUv.x*7.0)-uWaterTime*0.92);"+String.fromCharCode(10)+"float caustic=pow(max(0.0,rippleA*rippleB),8.0);"+String.fromCharCode(10)+"diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.74,0.91,1.0),caustic*0.14);");
       this.waterShader=shader;
     };
-    this.waterMaterial.customProgramCacheKey=()=>"blockworld-water-v3";
+    this.waterMaterial.customProgramCacheKey=()=>"blockworld-water-v4";
     this.waterFlowTime=0;
     if(!options.defer)this.generate();
   }
@@ -72,7 +74,7 @@ export class VoxelWorld{
       }
       this.putBlock(x,y,z,id);
     }
-    if(riverDistance<1.9||lakeDistance<5.6||secondLakeDistance<4.5||thirdLakeDistance<4.9){
+    if(height<WATER_LEVEL&&(riverDistance<2.9||lakeDistance<5.8||secondLakeDistance<5.1||thirdLakeDistance<5.5)){
       for(let y=height+1;y<=WATER_LEVEL;y++)this.putBlock(x,y,z,"water");
       if(height<WATER_LEVEL)this.waterSources.add(keyOf(x,WATER_LEVEL,z));
     }
@@ -325,7 +327,7 @@ export class VoxelWorld{
   updateWaterAnimation(dt){
     if(!Number.isFinite(dt)||dt<=0)return;this.waterFlowTime+=dt;
     if(this.waterShader)this.waterShader.uniforms.uWaterTime.value=this.waterFlowTime;
-    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.0018)%1;this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.0026)%1;}
+    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.0068)%1;this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.0049)%1;}
   }
   rebuild(){
     this.group.clear();this.chunkGroups.clear();this.buildChunkIndex();
