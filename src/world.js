@@ -12,11 +12,21 @@ import {
 const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z);
 
 function makeWaterTexture(){
- const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;const ctx=canvas.getContext("2d",{alpha:false});
- for(let y=0;y<128;y++)for(let x=0;x<128;x++){const grain=hash(x,y,719),wave=Math.sin(x*.09+y*.045)*.018+Math.cos(y*.08-x*.035)*.014;const c=new THREE.Color(0x176fae).multiplyScalar(.94+wave*2.1+(grain-.5)*.09);if(grain>.975)c.lerp(new THREE.Color(0xc8f1ff),.22);ctx.fillStyle="#"+c.getHexString();ctx.fillRect(x,y,1,1);}
- const t=new THREE.CanvasTexture(canvas);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.colorSpace=THREE.SRGBColorSpace;t.generateMipmaps=true;t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;return t;
+ const canvas=document.createElement("canvas");canvas.width=64;canvas.height=64;
+ const ctx=canvas.getContext("2d");
+ ctx.fillStyle="#258dcc";ctx.fillRect(0,0,64,64);
+ const bands=[
+  [3,8,24,2,"#54b5e4"],[27,14,31,2,"#1876b6"],[5,25,39,2,"#4aa9dc"],
+  [22,34,36,2,"#176eac"],[7,46,25,2,"#55b8e8"],[37,54,22,2,"#176eac"]
+ ];
+ for(const [x,y,w,h,color] of bands){ctx.fillStyle=color;ctx.fillRect(x,y,w,h);ctx.fillStyle="#b1e9ff";ctx.fillRect(x+2,y,w*.35,1);}
+ for(let i=0;i<90;i++){const x=(i*37)%64,y=(i*19)%64;ctx.fillStyle=i%3?"#2f9bd3":"#74c8eb";ctx.fillRect(x,y,1,1);}
+ const texture=new THREE.CanvasTexture(canvas);
+ texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.LinearMipmapLinearFilter;
+ texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=true;
+ texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+ return texture;
 }
-
 
 export class VoxelWorld{
   constructor(scene,seed=20261109,options={}){
@@ -36,17 +46,11 @@ export class VoxelWorld{
       this.materials.set(def.id,materials);
     }
     const waterTexture=makeWaterTexture();
-    this.waterMaterial=new THREE.MeshPhongMaterial({map:waterTexture,color:0xffffff,transparent:true,opacity:.94,depthWrite:true,depthTest:true,side:THREE.DoubleSide,vertexColors:true,shininess:105,specular:0xd2f3ff,flatShading:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-1});
-    this.waterShader=null;
-    this.waterMaterial.onBeforeCompile=(shader)=>{
-      shader.uniforms.uWaterTime={value:0};
-      shader.vertexShader=shader.vertexShader.replace("#include <common>","#include <common>"+String.fromCharCode(10)+"uniform float uWaterTime;"+String.fromCharCode(10)+"attribute float waterWave;");
-      shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>"+String.fromCharCode(10)+"float waveA=sin(position.x*1.12+uWaterTime*1.42);"+String.fromCharCode(10)+"float waveB=cos(position.z*0.88-uWaterTime*1.16);"+String.fromCharCode(10)+"float waveC=sin((position.x+position.z)*0.72-uWaterTime*0.78);"+String.fromCharCode(10)+"transformed.y+=waterWave*(waveA*waveB*0.032+waveC*0.012);");
-      shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>"+String.fromCharCode(10)+"uniform float uWaterTime;");
-      shader.fragmentShader=shader.fragmentShader.replace("#include <color_fragment>","#include <color_fragment>"+String.fromCharCode(10)+"float rippleA=sin((vUv.x*15.0+vUv.y*8.0)+uWaterTime*1.25);"+String.fromCharCode(10)+"float rippleB=cos((vUv.y*18.0-vUv.x*7.0)-uWaterTime*0.92);"+String.fromCharCode(10)+"float caustic=pow(max(0.0,rippleA*rippleB),8.0);"+String.fromCharCode(10)+"diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.74,0.91,1.0),caustic*0.14);");
-      this.waterShader=shader;
-    };
-    this.waterMaterial.customProgramCacheKey=()=>"blockworld-water-v4";
+    this.waterMaterial=new THREE.MeshBasicMaterial({
+      map:waterTexture,color:0xffffff,transparent:false,opacity:1,
+      depthWrite:true,depthTest:true,side:THREE.DoubleSide,
+      fog:false,toneMapped:false
+    });
     this.waterFlowTime=0;
     if(!options.defer)this.generate();
   }
@@ -313,13 +317,11 @@ export class VoxelWorld{
         const geometry=new THREE.BufferGeometry();
         geometry.setAttribute("position",new THREE.Float32BufferAttribute(surface.positions,3));
         geometry.setAttribute("uv",new THREE.Float32BufferAttribute(surface.uvs,2));
-        geometry.setAttribute("color",new THREE.Float32BufferAttribute(surface.colors,3));
-        geometry.setAttribute("waterWave",new THREE.Float32BufferAttribute(surface.waveWeights,1));
         geometry.setIndex(surface.indices);
         geometry.computeVertexNormals();geometry.computeBoundingSphere();
         const waterMesh=new THREE.Mesh(geometry,this.waterMaterial);
-        waterMesh.userData={blockId:"water",dynamicWater:true,topFaces:surface.topFaces,sideFaces:surface.sideFaces};
-        waterMesh.renderOrder=4;waterMesh.frustumCulled=false;waterMesh.userData.waterCellCount=waterCoords.length;chunkGroup.add(waterMesh);
+        waterMesh.userData={blockId:"water",dynamicWater:true,topFaces:surface.topFaces,sideFaces:surface.sideFaces,waterCellCount:waterCoords.length};
+        waterMesh.renderOrder=1;waterMesh.frustumCulled=false;chunkGroup.add(waterMesh);
       }
     }
     this.chunkGroupVisibility(chunkGroup,ix,iz);
@@ -347,10 +349,17 @@ export class VoxelWorld{
     }
     return groups;
   }
+  getWaterSummary(){
+    let cells=0,chunks=0,meshes=0,topFaces=0;
+    for(const [key,id] of this.blocks)if(id==="water")cells++;
+    for(const group of this.chunkGroups.values())for(const object of group.children){
+      if(object.userData?.blockId==="water"){meshes++;chunks++;topFaces+=object.userData.topFaces||0;}
+    }
+    return {cells,chunks,meshes,topFaces};
+  }
   updateWaterAnimation(dt){
     if(!Number.isFinite(dt)||dt<=0)return;this.waterFlowTime+=dt;
-    if(this.waterShader)this.waterShader.uniforms.uWaterTime.value=this.waterFlowTime;
-    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.0068)%1;this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.0049)%1;}
+    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.014)%1;this.waterMaterial.map.needsUpdate=true;}
   }
   rebuild(){
     this.group.clear();this.chunkGroups.clear();this.buildChunkIndex();
