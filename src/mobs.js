@@ -91,8 +91,8 @@ export class MobSystem{
       const tail=cube(root,palette.leg,[.09,.42,.09],[0,.88*scale,-.67*scale]);tail.rotation.x=-.35;
     }
     const hitMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,colorWrite:false,depthWrite:false});
-    const hitbox=new THREE.Mesh(new THREE.BoxGeometry(type==="chicken"?.8:1.05,type==="chicken"?1:1.45,type==="chicken"?.9:1.2),hitMaterial);
-    hitbox.position.y=type==="chicken"?.49:.72;root.add(hitbox);
+    const hitbox=new THREE.Mesh(new THREE.BoxGeometry(type==="chicken"?.9:1.05,1.9,type==="chicken"?1:1.2),hitMaterial);
+    hitbox.position.y=.95;root.add(hitbox);
     const mob={
       type,root,bodyGroup,headPivot,legs,index,atlas,hitbox,
       hp:type==="chicken"?2:4,maxHp:type==="chicken"?2:4,
