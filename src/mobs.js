@@ -143,7 +143,11 @@ export class MobSystem{
         if(mob.state==="walk"||mob.state==="flee"){mob.state="idle";mob.timer=1.3+seeded(mob.index+Math.floor(time))*2.2;}
         else{
           const angle=seeded(mob.index+Math.floor(time*2)+this.seed)*Math.PI*2,distance=2+seeded(mob.index+Math.floor(time*3))*4;
-          mob.target.set(mob.origin.x+Math.cos(angle)*distance,0,mob.origin.z+Math.sin(angle)*distance);
+          mob.target.set(
+            Math.max(-30,Math.min(29,mob.origin.x+Math.cos(angle)*distance)),
+            0,
+            Math.max(-22,Math.min(21,mob.origin.z+Math.sin(angle)*distance))
+          );
           mob.state="walk";mob.timer=3.5;
         }
       }
