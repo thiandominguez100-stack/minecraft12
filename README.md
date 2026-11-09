@@ -1,6 +1,6 @@
 # BlockWorld 3D
 
-**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.7.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
+**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 1.5.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
 
 ## Play with GitHub Pages
 
@@ -18,8 +18,8 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 - Cinematic title screen with a live, orbiting 3D landscape preview.
 - First-person voxel arm with idle, walking and mining motion.
 - A staged loading screen reporting progress across all 64 terrain chunks and their separate meshes.
-- Per-face 16×16 pixel textures with distinct grass, log, foliage and ore details.
-- Per-chunk instanced block batches, with edits rebuilding only the affected chunk.
+- Individually designed 64×64 pixel textures for every block face, including grass, wood, foliage, ores, glass and crafted blocks.
+- Per-chunk greedy meshes that merge adjacent coplanar block faces, cull hidden surfaces and rebuild neighboring chunks at boundaries.
 - First-person camera with buffered jumping, stable ground detection, AABB collision, gravity substeps, horizontal acceleration and air control.
 - Jump input has no artificial cooldown; a short input buffer prevents presses from being lost just before landing.
 - WASD movement, jumping, basic collision and Creative flight.
