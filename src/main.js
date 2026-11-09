@@ -100,7 +100,7 @@ function updateSky(){
  const angle=dayTime*Math.PI*2,light=Math.max(.08,Math.sin(angle)*.9+.25);
  sun.position.set(Math.cos(angle)*40,Math.sin(angle)*50,18);sun.intensity=light*2.05;skyLight.intensity=.35+light*1.4;
  const sky=new THREE.Color().setHSL(.56,.48,.13+light*.43);scene.background=sky;scene.fog.color.copy(sky);
- const hour=Math.floor(dayTime*24),mins=Math.floor((dayTime*24-hour)*60);
+ const shownTime=(dayTime*24+6)%24,hour=Math.floor(shownTime),mins=Math.floor((shownTime-hour)*60);
  $("time-label").textContent="Día · "+String(hour).padStart(2,"0")+":"+String(mins).padStart(2,"0")+" · "+(weather==="rain"?"Lluvia":"Despejado");
 }
 function setWeather(value){weather=value==="rain"?"rain":"clear";rain.visible=weather==="rain";updateSky();notify(weather==="rain"?"Comenzó a llover.":"El clima está despejado.")}
@@ -152,7 +152,7 @@ function runCommand(raw){
  case"weather":setWeather(args[0]);commandOutput("Clima: "+weather);break;
  case"tp":if(args.length>=3&&args.slice(0,3).every(v=>Number.isFinite(Number(v)))){camera.position.set(Number(args[0]),Number(args[1]),Number(args[2]));velocity.set(0,0,0);commandOutput("Teletransporte realizado.")}else commandOutput("Uso: /tp x y z");break;
  case"setblock":if(args.length>=4){const [x,y,z]=args.slice(0,3).map(Number),id=args[3];if([x,y,z].every(Number.isFinite)&&BLOCK_MAP[id]){world.set(x,y,z,id);commandOutput("Bloque colocado.")}else commandOutput("Coordenadas o bloque inválidos.")}else commandOutput("Uso: /setblock x y z bloque");break;
- case"fill":if(args.length>=7){const v=args.slice(0,6).map(Number),id=args[6];if(v.every(Number.isFinite)&&BLOCK_MAP[id]){const min=v.slice(0,3).map(Math.floor),max=v.slice(3,6).map(Math.floor);let total=0;for(let x=Math.min(min[0],max[0]);x<=Math.max(min[0],max[0]);x++)for(let y=Math.min(min[1],max[1]);y<=Math.max(min[1],max[1]);y++)for(let z=Math.min(min[2],max[2]);z<=Math.max(min[2],max[2]);z++){if(total>=256)break;world.set(x,y,z,id);total++}commandOutput("Bloques colocados: "+total+(total===256?" · límite de 256 por comando":""))}else commandOutput("Parámetros inválidos.")}else commandOutput("Uso: /fill x1 y1 z1 x2 y2 z2 bloque");break;
+ case"fill":if(args.length>=7){const v=args.slice(0,6).map(Number),id=args[6];if(v.every(Number.isFinite)&&BLOCK_MAP[id]){const min=v.slice(0,3).map(Math.floor),max=v.slice(3,6).map(Math.floor);let total=0;for(let x=Math.min(min[0],max[0]);x<=Math.max(min[0],max[0]);x++)for(let y=Math.min(min[1],max[1]);y<=Math.max(min[1],max[1]);y++)for(let z=Math.min(min[2],max[2]);z<=Math.max(min[2],max[2]);z++){if(total>=256)break;world.set(x,y,z,id,false);total++}world.rebuild();commandOutput("Bloques colocados: "+total+(total===256?" · límite de 256 por comando":""))}else commandOutput("Parámetros inválidos.")}else commandOutput("Uso: /fill x1 y1 z1 x2 y2 z2 bloque");break;
  case"clear":inventory.slots=Array.from({length:36},()=>null);renderHotbar();renderInventory();commandOutput("Inventario vaciado.");break;
  case"save":save();commandOutput("Guardado solicitado.");break;
  case"seed":commandOutput("Semilla: "+world.seed);break;
