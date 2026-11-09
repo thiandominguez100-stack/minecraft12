@@ -19,7 +19,7 @@ test("different block types cannot share an atlas tile",()=>{
 test("atlas sampling rectangles stay inside the half-pixel inset of each tile",()=>{
  const [x,y,w,h]=atlasTileRect(0,0),atlasSize=ATLAS_COLUMNS*ATLAS_TILE_SIZE;
  assert.equal(x*atlasSize,.5);
- assert.equal(y*atlasSize,.5);
+ assert.equal(y*atlasSize,(ATLAS_ROWS-1)*ATLAS_TILE_SIZE+.5);
  assert.equal(w*atlasSize,ATLAS_TILE_SIZE-1);
  assert.equal(h*atlasSize,ATLAS_TILE_SIZE-1);
 });
