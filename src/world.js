@@ -317,10 +317,15 @@ export class VoxelWorld{
         const geometry=new THREE.BufferGeometry();
         geometry.setAttribute("position",new THREE.Float32BufferAttribute(surface.positions,3));
         geometry.setAttribute("uv",new THREE.Float32BufferAttribute(surface.uvs,2));
+        geometry.setAttribute("waterWave",new THREE.Float32BufferAttribute(surface.waveWeights,1));
         geometry.setIndex(surface.indices);
-        geometry.computeVertexNormals();geometry.computeBoundingSphere();
+        geometry.computeBoundingSphere();
         const waterMesh=new THREE.Mesh(geometry,this.waterMaterial);
-        waterMesh.userData={blockId:"water",dynamicWater:true,topFaces:surface.topFaces,sideFaces:surface.sideFaces,waterCellCount:waterCoords.length};
+        waterMesh.userData={
+          blockId:"water",dynamicWater:true,topFaces:surface.topFaces,
+          sideFaces:surface.sideFaces,waterCellCount:waterCoords.length,
+          basePositions:new Float32Array(surface.positions)
+        };
         waterMesh.renderOrder=1;waterMesh.frustumCulled=false;chunkGroup.add(waterMesh);
       }
     }
@@ -358,8 +363,31 @@ export class VoxelWorld{
     return {cells,chunks,meshes,topFaces};
   }
   updateWaterAnimation(dt){
-    if(!Number.isFinite(dt)||dt<=0)return;this.waterFlowTime+=dt;
-    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.014)%1;}
+    if(!Number.isFinite(dt)||dt<=0)return;
+    this.waterFlowTime+=dt;
+    const time=this.waterFlowTime;
+    if(this.waterMaterial?.map){
+      this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.026)%1;
+      this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.009)%1;
+    }
+    for(const group of this.chunkGroups.values()){
+      if(!group.visible)continue;
+      for(const mesh of group.children){
+        if(!mesh.userData?.dynamicWater)continue;
+        const position=mesh.geometry.attributes.position;
+        const weights=mesh.geometry.attributes.waterWave;
+        const base=mesh.userData.basePositions;
+        if(!position||!weights||!base)continue;
+        const array=position.array;
+        for(let i=0;i<weights.count;i++){
+          const offset=i*3,x=base[offset],z=base[offset+2],weight=weights.getX(i);
+          const broad=Math.sin(x*.82+time*1.18)*Math.cos(z*.73-time*.91);
+          const ripple=Math.sin((x+z)*.57-time*.72);
+          array[offset+1]=base[offset+1]+weight*(broad*.024+ripple*.009);
+        }
+        position.needsUpdate=true;
+      }
+    }
   }
   rebuild(){
     this.group.clear();this.chunkGroups.clear();this.buildChunkIndex();
