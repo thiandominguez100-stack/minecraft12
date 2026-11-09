@@ -76,3 +76,14 @@ test("horizontal swimming accelerates the player through water",()=>{
   assert.ok(p.velocity.x>0);
   assert.ok(p.position.x>0);
 });
+
+test("a quick jump tap produces a distinct swimming stroke",()=>{
+  const physics=new FirstPersonPhysics(),world={
+    ...flatWorld(),
+    getSubmersion:()=>.75
+  },p=player();
+  physics.queueJump();
+  physics.update(world,p.position,p.velocity,{x:0,z:0,speed:4.8,jump:false},1/60);
+  assert.equal(physics.inWater,true);
+  assert.ok(p.velocity.y>=3.2);
+});
