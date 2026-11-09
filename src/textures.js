@@ -1,15 +1,6 @@
 import * as THREE from "three";
-
-export const BLOCK_TEXTURE_SIZE=64;
-export const BLOCK_TEXTURE_PROFILES=Object.freeze({
- grass:"layered turf and soil edge",dirt:"crumbled soil and root flecks",stone:"fractured rock and mineral grain",
- cobblestone:"bevelled stone pieces and mortar",oak_log:"bark grain and growth rings",oak_planks:"wooden boards and knots",
- leaves:"alpha-cut leaf clusters",sand:"wind ripples and sand grains",glass:"translucent glass and edge glints",
- bricks:"offset clay bricks and mortar",coal_ore:"coal seams",iron_ore:"iron veins",gold_ore:"gold clusters",
- diamond_ore:"turquoise crystal seams",bedrock:"fractured dark foundation",water:"blue water tile",torch:"wood shaft and flame",
- crafting_table:"wood workbench grid",furnace:"stone casing and furnace mouth",chest:"wood and brass bands",
- snow:"packed snow and sparkle",clay:"mottled clay",moss:"organic moss patches"
-});
+import {BLOCK_TEXTURE_SIZE,BLOCK_TEXTURE_PROFILES} from "./texture-spec.js";
+export {BLOCK_TEXTURE_SIZE,BLOCK_TEXTURE_PROFILES};
 const c=h=>new THREE.Color(h);
 const h=v=>"#"+v.getHexString();
 const rnd=(x,y,s)=>{let n=(Math.imul(x+s,374761393)+Math.imul(y-s,668265503))|0;n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295;};
@@ -44,7 +35,7 @@ function paint(ctx,id,face,seed,def){
  noiseBase(ctx,def.color||0x777777,seed,.13);
 }
 export function makeBlockTexture(def,face="side"){
- const canvas=document.createElement("canvas");canvas.width=64;canvas.height=64;
+ const canvas=document.createElement("canvas");canvas.width=BLOCK_TEXTURE_SIZE;canvas.height=BLOCK_TEXTURE_SIZE;
  const transparent=def.id==="leaves"||def.id==="glass",ctx=canvas.getContext("2d",{alpha:transparent});ctx.imageSmoothingEnabled=false;
  const seed=(def.color||0)+def.id.length*73+face.length*19;paint(ctx,def.id,face,seed,def);
  const texture=new THREE.CanvasTexture(canvas);texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestMipmapLinearFilter;texture.generateMipmaps=true;texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.userData={resolution:64,blockId:def.id,face};return texture;
