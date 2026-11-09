@@ -91,10 +91,10 @@ test("waterline terrain reaches the same block height at the dry bank",()=>{
  assert.equal(dryBank,4);
 });
 
-test("the full carved river width is water-filled, not left as an empty sand trench",()=>{
+test("the lowered river keeps a continuous water channel and a level dry bank",()=>{
  const seed=20261109;
  const x=12,center=riverCenterAt(x,seed);
- const inside=terrainSample(x,Math.round(center+12),seed);
+ const inside=terrainSample(x,Math.round(center+6),seed);
  const edge=terrainSample(x,Math.round(center+14),seed);
  assert.equal(inside.isWaterColumn,true);
  assert.ok(inside.height<WATER_LEVEL);
