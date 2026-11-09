@@ -1,4 +1,4 @@
-import {chunkAddress} from "./terrain.js";
+import {chunkAddress,terrainSample,WATER_LEVEL} from "./terrain.js";
 const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z),decodeKey=k=>k.split(",").map(Number);
 const DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],HORIZ=[[1,0],[-1,0],[0,1],[0,-1]];
 export class WaterSimulation{
@@ -6,7 +6,7 @@ export class WaterSimulation{
  markChunks(x,z,set){for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){const a=chunkAddress(x+dx,z+dz);if(a)set.add(a.key);}}
  rebuildChunks(set){for(const k of set){const [ix,iz]=k.split(",").map(Number);this.world.rebuildChunk(ix,iz);}}
  addSource(x,y,z,{rebuild=true,activate=true}={}){x=Math.round(x);y=Math.round(y);z=Math.round(z);const k=keyOf(x,y,z),id=this.world.get(x,y,z);if(id!==null&&id!=="water")return false;if(!this.world.set(x,y,z,"water",false))return false;this.sources.add(k);this.world.waterSources.add(k);this.levels.set(k,{level:0,falling:false,source:true,settled:false});if(activate)this.active.add(k);if(rebuild){const set=new Set();this.markChunks(x,z,set);this.rebuildChunks(set);}return true;}
- restoreSources(entries=[]){const set=new Set();for(const e of entries){const k=Array.isArray(e)&&e.length===3?keyOf(...e.map(Number)):typeof e==="string"?e:null;if(!k)continue;const [x,y,z]=decodeKey(k);if(![x,y,z].every(Number.isFinite)||y<-5||y>32)continue;const id=this.world.get(x,y,z);if(id!==null&&id!=="water")continue;if(!this.world.set(x,y,z,"water",false))continue;this.sources.add(k);this.world.waterSources.add(k);this.levels.set(k,{level:0,falling:false,source:true,settled:false});this.active.add(k);this.markChunks(x,z,set);}this.rebuildChunks(set);return this;}
+ restoreSources(entries=[]){const set=new Set();for(const e of entries){const k=Array.isArray(e)&&e.length===3?keyOf(...e.map(Number)):typeof e==="string"?e:null;if(!k)continue;const [x,y,z]=decodeKey(k);if(![x,y,z].every(Number.isFinite)||y<-5||y>32)continue;const sample=terrainSample(x,z,this.world.seed);if(y===WATER_LEVEL&&sample.isWaterColumn&&!sample.waterSource)continue;const id=this.world.get(x,y,z);if(id!==null&&id!=="water")continue;if(!this.world.set(x,y,z,"water",false))continue;this.sources.add(k);this.world.waterSources.add(k);this.levels.set(k,{level:0,falling:false,source:true,settled:false});this.active.add(k);this.markChunks(x,z,set);}this.rebuildChunks(set);return this;}
  exportSources(){return [...this.sources].map(decodeKey);}
  update(dt){
   if(!Number.isFinite(dt)||dt<=0){this.flushRebuilds(this.maxChunkRebuildsPerFrame);return 0;}
