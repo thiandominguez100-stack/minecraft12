@@ -87,3 +87,11 @@ test("a quick jump tap produces a distinct swimming stroke",()=>{
   assert.equal(physics.inWater,true);
   assert.ok(p.velocity.y>=3.2);
 });
+
+test("holding Shift dives below the water surface",()=>{
+  const physics=new FirstPersonPhysics(),world={collides:()=>false,findGroundSurface:()=>null,getSubmersion:()=>.85},p=player();
+  physics.update(world,p.position,p.velocity,{x:0,z:0,speed:4.8,dive:true},.05);
+  assert.equal(physics.inWater,true);
+  assert.ok(p.velocity.y<0,"Shift should create downward swimming velocity");
+  assert.ok(p.position.y<2.12,"the player should descend");
+});

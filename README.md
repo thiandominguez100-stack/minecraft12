@@ -1,6 +1,6 @@
 # BlockWorld 3D
 
-**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.6.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
+**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.7.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
 
 ## Play with GitHub Pages
 
@@ -13,11 +13,11 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 
 ## Current alpha features
 
-- A prebuilt 12-chunk world: 4 × 3 chunks, each 16 × 16 blocks (64 × 48 block footprint).
+- A prebuilt 64-chunk world: 8 × 8 chunks, each 16 × 16 blocks (128 × 128 block footprint).
 - Smooth, seeded terrain with connected hills, a tall snowy mountain, a winding river, a lake, meadow/forest/desert zones, broad-canopy trees, stone outcrops and a ruined landmark.
 - Cinematic title screen with a live, orbiting 3D landscape preview.
 - First-person voxel arm with idle, walking and mining motion.
-- A staged loading screen reporting progress across all 12 terrain chunks and their separate meshes.
+- A staged loading screen reporting progress across all 64 terrain chunks and their separate meshes.
 - Per-face 16×16 pixel textures with distinct grass, log, foliage and ore details.
 - Per-chunk instanced block batches, with edits rebuilding only the affected chunk.
 - First-person camera with buffered jumping, stable ground detection, AABB collision, gravity substeps, horizontal acceleration and air control.
@@ -39,8 +39,8 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 |---|---|
 | WASD | Move |
 | Mouse | Look around |
-| Space | Jump in Survival; rise in Creative |
-| Shift | Move slowly in Survival; descend in Creative |
+| Space | Jump on land; swim upward in water; rise in Creative |
+| Shift | Move slowly on land; dive down while swimming; descend in Creative |
 | Ctrl | Sprint in Survival |
 | Left mouse (hold) | Mine targeted block |
 | Right mouse | Place selected block or eat food |
@@ -104,7 +104,7 @@ World edits, player position, inventory, game mode, time and weather are stored 
 - Water source coordinates are included in local save data and restored with the world.
 
 
-## Alpha 0.6.0 — connected water and live block reactions
+## Alpha 0.7.0 — connected water and live block reactions
 
 - Replaced per-cell water cubes with a connected mesh of top surfaces and exposed outer walls, eliminating internal seams between adjacent water cells.
 - Neighboring water cells share the same corner heights, blending flowing levels into continuous surfaces across block and chunk boundaries.
@@ -120,3 +120,12 @@ World edits, player position, inventory, game mode, time and weather are stored 
 This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass with 64×32 (2,048-pixel) per-species atlases: they do not yet have breeding, sounds, sophisticated collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, infinite chunk streaming beyond the current 12-chunk map, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
 
 The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Alpha 0.7.0 — larger world, continuous water and dive controls
+
+- Expanded the world to 64 chunks (8 × 8), a 128 × 128 block footprint; added a second mountain region, a second lake basin and another ruined landmark.
+- Increased the passive creature population and distributed animals throughout the expanded map.
+- Rebuilt water tops as four-subdivision-per-block shared vertex grids; neighboring water tiles now share vertices and corner heights, with no internal side walls.
+- Replaced the high-contrast tiled water pattern with a low-contrast seamless texture and animated vertex waves; water gets smooth specular highlights instead of bright block-grid stripes.
+- Added downward swimming force on Shift, while Space remains the upward swim stroke. The first-person arm is smaller, opaque, rendered above translucent water and includes a visible palm and fingers.
+- Added regression coverage for diving, the 64-chunk footprint and water sources refusing to overwrite solid blocks.

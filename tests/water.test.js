@@ -113,3 +113,8 @@ test("a source overwritten by a solid block is removed from the source registry"
   assert.deepEqual(fluid.exportSources(),[]);
   assert.equal(world.get(0,1,0),"stone");
 });
+
+test("water sources refuse to overwrite solid blocks",()=>{
+ const world=new FakeWorld();world.set(0,1,0,"stone");const fluid=new WaterSimulation(world);
+ assert.equal(fluid.addSource(0,1,0),false);assert.equal(world.get(0,1,0),"stone");
+});

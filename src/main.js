@@ -15,10 +15,16 @@ const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,140);
 scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
-const armRig=new THREE.Group();armRig.position.set(.43,-.48,-.78);camera.add(armRig);
-const sleeve=new THREE.Mesh(new THREE.BoxGeometry(.27,.42,.28),new THREE.MeshLambertMaterial({color:0x527d91}));
-const hand=new THREE.Mesh(new THREE.BoxGeometry(.25,.25,.27),new THREE.MeshLambertMaterial({color:0xc99b78}));
-sleeve.position.y=-.1;hand.position.set(0,-.34,.015);armRig.add(sleeve,hand);armRig.visible=false;
+const armRig=new THREE.Group();armRig.position.set(.49,-.56,-.84);camera.add(armRig);
+const sleeveMaterial=new THREE.MeshLambertMaterial({color:0x47677c});
+const skinMaterial=new THREE.MeshLambertMaterial({color:0xc99575});
+const sleeve=new THREE.Mesh(new THREE.BoxGeometry(.20,.31,.22),sleeveMaterial);
+const palm=new THREE.Mesh(new THREE.BoxGeometry(.16,.12,.17),skinMaterial);
+for(let i=0;i<4;i++){const finger=new THREE.Mesh(new THREE.BoxGeometry(.035,.085,.045),skinMaterial);finger.position.set(-.052+i*.035,-.355,.075);armRig.add(finger);}
+const thumb=new THREE.Mesh(new THREE.BoxGeometry(.045,.075,.055),skinMaterial);
+thumb.position.set(-.095,-.31,.015);sleeve.position.set(0,-.035,0);palm.position.set(-.005,-.275,.045);armRig.add(sleeve,palm,thumb);
+armRig.traverse(object=>{if(!object.isMesh)return;object.renderOrder=20;object.frustumCulled=false;object.material.depthTest=false;object.material.depthWrite=false;object.material.transparent=false;object.material.needsUpdate=true;});
+armRig.visible=false;
 const skyLight=new THREE.HemisphereLight(0xd9efff,0x66704c,1.7);scene.add(skyLight);
 const sun=new THREE.DirectionalLight(0xffefca,2.1);sun.position.set(-28,42,18);scene.add(sun);
 let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival"),fluid=new WaterSimulation(world);
@@ -31,7 +37,7 @@ const keys={},ray=new THREE.Raycaster();ray.far=6;
 let leftDown=false,miningKey="",miningProgress=0,lastSave=0,lastHunger=0,toastTimer=0;
 let targetHit=null,targetMob=null,toastTimerId=0;
 const rainCount=360,rainPositions=new Float32Array(rainCount*3);
-for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*62;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*46}
+for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*112;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*112}
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
 const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xc9dceb,size:.09,transparent:true,opacity:.56}));rain.visible=false;scene.add(rain);
 
@@ -157,7 +163,7 @@ function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(
 function updateAim(){
  scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
  ray.setFromCamera(new THREE.Vector2(0,0),camera);
- const blocks=ray.intersectObjects(world.group.children,true),blockHit=blocks.length?blocks[0]:null;
+ const blocks=ray.intersectObjects(world.group.children,true).filter(hit=>hit.object.userData.blockId!=="water"),blockHit=blocks.length?blocks[0]:null;
  const creature=mobs?.pick(ray);
  if(creature&&(!blockHit||creature.distance<blockHit.distance)){targetMob=creature.mob;targetHit=null}
  else{targetMob=null;targetHit=blockHit}
@@ -345,20 +351,20 @@ function tick(now){
  if(started&&locked){
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0),side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const dir=new THREE.Vector3(side,0,-forward);if(dir.lengthSq()>1)dir.normalize();dir.applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
-  const speed=mode==="creative"?8.5:keys.ControlLeft?7:keys.ShiftLeft?2.2:4.8;
+  const speed=mode==="creative"?8.5:keys.ControlLeft?7:(keys.ShiftLeft&&!physics.inWater?2.2:4.8);
   if(mode==="creative"){
    camera.position.x+=dir.x*speed*dt;camera.position.z+=dir.z*speed*dt;
    if(keys.Space)camera.position.y+=speed*dt;if(keys.ShiftLeft)camera.position.y-=speed*dt;
    velocity.set(0,0,0);
   }else{
-   physics.update(world,camera.position,velocity,{x:dir.x,z:dir.z,speed,jump:!!keys.Space,sprint:!!keys.ControlLeft},dt);
+   physics.update(world,camera.position,velocity,{x:dir.x,z:dir.z,speed,jump:!!keys.Space,sprint:!!keys.ControlLeft,dive:!!keys.ShiftLeft},dt);
    if(camera.position.y< -12){
     camera.position.set(0,world.highest(0,0)+2.12,0);velocity.set(0,0,0);physics.reset();physics.onGround=true;
     health=clamp(health-4,0,20);updateVitals();notify("Caída: has regresado al punto de aparición.");
    }
   }
   updateAim();mineTarget(dt);
-  $("coords").textContent="X: "+camera.position.x.toFixed(1)+" · Y: "+camera.position.y.toFixed(1)+" · Z: "+camera.position.z.toFixed(1)+(physics.inWater?" · NADANDO":"");
+  $("coords").textContent="X: "+camera.position.x.toFixed(1)+" · Y: "+camera.position.y.toFixed(1)+" · Z: "+camera.position.z.toFixed(1)+(physics.inWater?(world.isEyeUnderwater(camera.position)?" · SUMERGIDO":" · NADANDO"):"");
   $("underwater-overlay").classList.toggle("active",world.isEyeUnderwater(camera.position));
   if(mode==="survival"&&Date.now()-lastHunger>45000&&hunger>0){hunger=Math.max(0,hunger-1);lastHunger=Date.now();if(hunger===0)health=Math.max(1,health-1);updateVitals()}
   dayTime=(dayTime+dt/900)%1;updateSky();

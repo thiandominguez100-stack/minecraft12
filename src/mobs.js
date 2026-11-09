@@ -42,9 +42,9 @@ function cube(parent,mat,size,position,uvRect=[0,0,1,1]){
 export class MobSystem{
   constructor(scene,world,seed=1){this.scene=scene;this.world=world;this.seed=seed;this.mobs=[];this.clock=0;this.spawn();}
   spawn(){
-    const types=["sheep","sheep","cow","chicken","sheep","cow","chicken"];let placed=0;
+    const types=["sheep","sheep","cow","chicken","sheep","cow","chicken","cow","sheep","chicken","cow","sheep","sheep","chicken","cow","sheep","cow","chicken"];let placed=0;
     for(let i=0;i<types.length&&placed<types.length;i++){
-      const x=Math.round((seeded(this.seed+i*7)-.5)*54),z=Math.round((seeded(this.seed+i*13+4)-.5)*38);
+      const x=Math.round((seeded(this.seed+i*7)-.5)*116),z=Math.round((seeded(this.seed+i*13+4)-.5)*116);
       const y=this.world.highest(x,z),surface=this.world.get(x,y,z);
       if(!surface||!["grass","sand"].includes(surface)||this.world.get(x,y+1,z))continue;
       const mob=this.create(types[i],x,y+.5,z,i);this.mobs.push(mob);this.scene.add(mob.root);placed++;

@@ -10,21 +10,9 @@ import {
 const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z);
 
 function makeWaterTexture(){
-  const canvas=document.createElement("canvas");canvas.width=16;canvas.height=16;
-  const ctx=canvas.getContext("2d",{alpha:false});
-  for(let y=0;y<16;y++)for(let x=0;x<16;x++){
-    const a=Math.sin((x/16)*Math.PI*2+(y/16)*Math.PI*2);
-    const b=Math.cos((x/16)*Math.PI*4-(y/16)*Math.PI*2);
-    const tone=.91+a*.075+b*.035;
-    const color=new THREE.Color(0x438fb9).multiplyScalar(tone);
-    if(a+b>1.05)color.lerp(new THREE.Color(0x8bc8e5),.24);
-    ctx.fillStyle="#"+color.getHexString();ctx.fillRect(x,y,1,1);
-  }
-  const texture=new THREE.CanvasTexture(canvas);
-  texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.LinearFilter;
-  texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=false;
-  texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
-  return texture;
+ const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;const ctx=canvas.getContext("2d",{alpha:false});
+ for(let y=0;y<128;y++)for(let x=0;x<128;x++){const grain=hash(x,y,719),wave=Math.sin(x*.09+y*.045)*.018+Math.cos(y*.08-x*.035)*.014;const c=new THREE.Color(0x468fb8).multiplyScalar(.96+wave+(grain-.5)*.055);if(grain>.985)c.lerp(new THREE.Color(0xa9d9ec),.10);ctx.fillStyle="#"+c.getHexString();ctx.fillRect(x,y,1,1);}
+ const t=new THREE.CanvasTexture(canvas);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.colorSpace=THREE.SRGBColorSpace;t.generateMipmaps=true;t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;return t;
 }
 
 function makeTexture(def,face="side"){
@@ -99,10 +87,15 @@ export class VoxelWorld{
       this.materials.set(def.id,materials);
     }
     const waterTexture=makeWaterTexture();
-    this.waterMaterial=new THREE.MeshLambertMaterial({
-      map:waterTexture,color:0xffffff,transparent:true,opacity:.72,
-      depthWrite:false,side:THREE.DoubleSide,vertexColors:true
-    });
+    this.waterMaterial=new THREE.MeshPhongMaterial({map:waterTexture,color:0xffffff,transparent:true,opacity:.80,depthWrite:false,side:THREE.DoubleSide,vertexColors:true,shininess:88,specular:0xa9dcf4,flatShading:false});
+    this.waterShader=null;
+    this.waterMaterial.onBeforeCompile=(shader)=>{
+      shader.uniforms.uWaterTime={value:0};
+      shader.vertexShader=shader.vertexShader.replace("#include <common>","#include <common>"+String.fromCharCode(10)+"uniform float uWaterTime;"+String.fromCharCode(10)+"attribute float waterWave;");
+      shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>"+String.fromCharCode(10)+"float waveA=sin(position.x*0.62+uWaterTime*1.15);"+String.fromCharCode(10)+"float waveB=cos(position.z*0.54-uWaterTime*0.92);"+String.fromCharCode(10)+"transformed.y+=waterWave*(waveA*waveB)*0.022;");
+      this.waterShader=shader;
+    };
+    this.waterMaterial.customProgramCacheKey=()=>"blockworld-water-v3";
     this.waterFlowTime=0;
     if(!options.defer)this.generate();
   }
@@ -181,8 +174,8 @@ export class VoxelWorld{
     }
   }
 
-  placeLandmark(){
-    const cx=9,cz=-18,ground=terrainSample(cx,cz,this.seed).height;
+  placeLandmark(cx=9,cz=-18){
+    const ground=terrainSample(cx,cz,this.seed).height;
     if(terrainSample(cx,cz,this.seed).biome==="desert")return;
     for(let x=-5;x<=5;x++)for(let z=-4;z<=4;z++)
       if(Math.abs(x)===5||Math.abs(z)===4)this.putBlock(cx+x,ground,cz+z,"cobblestone");
@@ -212,14 +205,15 @@ export class VoxelWorld{
     for(let x=WORLD_MIN_X+4;x<=WORLD_MAX_X-4;x+=10)
       for(let z=WORLD_MIN_Z+4;z<=WORLD_MAX_Z-4;z+=10)
         if(hash(x,z,this.seed+606)>.48)this.placeBoulder(x,z);
-    this.placeLandmark();
+    this.placeLandmark(9,-18);
+    this.placeLandmark(-43,42);
   }
 
   generate(){this.generateTerrain();this.generateFeatures();this.base=new Map(this.blocks);this.rebuild();}
 
   async generateAsync(onProgress=()=>{}){
     this.blocks.clear();this.base.clear();this.changes.clear();
-    onProgress(2,"Preparando 12 chunks de 16 × 16");
+    onProgress(2,"Preparando "+TOTAL_CHUNKS+" chunks de 16 × 16");
     let built=0;
     for(let iz=0;iz<CHUNKS_Z;iz++)for(let ix=0;ix<CHUNKS_X;ix++){
       const startX=WORLD_MIN_X+ix*CHUNK_SIZE,startZ=WORLD_MIN_Z+iz*CHUNK_SIZE;
@@ -237,7 +231,7 @@ export class VoxelWorld{
       onProgress(60+Math.round(rendered/TOTAL_CHUNKS*40),"Construyendo chunk mesh "+rendered+" de "+TOTAL_CHUNKS);
       await new Promise(resolve=>setTimeout(resolve,0));
     }
-    onProgress(100,"12 chunks listos · "+this.blocks.size.toLocaleString("es-AR")+" bloques");
+    onProgress(100,TOTAL_CHUNKS+" chunks listos · "+this.blocks.size.toLocaleString("es-AR")+" bloques");
   }
 
   get(x,y,z){
@@ -350,6 +344,7 @@ export class VoxelWorld{
         geometry.setAttribute("position",new THREE.Float32BufferAttribute(surface.positions,3));
         geometry.setAttribute("uv",new THREE.Float32BufferAttribute(surface.uvs,2));
         geometry.setAttribute("color",new THREE.Float32BufferAttribute(surface.colors,3));
+        geometry.setAttribute("waterWave",new THREE.Float32BufferAttribute(surface.waveWeights,1));
         geometry.setIndex(surface.indices);
         geometry.computeVertexNormals();geometry.computeBoundingSphere();
         const waterMesh=new THREE.Mesh(geometry,this.waterMaterial);
@@ -360,10 +355,9 @@ export class VoxelWorld{
     this.chunkGroups.set(chunkKey,chunkGroup);this.group.add(chunkGroup);
   }
   updateWaterAnimation(dt){
-    if(!this.waterMaterial?.map||!Number.isFinite(dt)||dt<=0)return;
-    this.waterFlowTime+=dt;
-    this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.018)%1;
-    this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.032)%1;
+    if(!Number.isFinite(dt)||dt<=0)return;this.waterFlowTime+=dt;
+    if(this.waterShader)this.waterShader.uniforms.uWaterTime.value=this.waterFlowTime;
+    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.0018)%1;this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.0026)%1;}
   }
   rebuild(){
     this.group.clear();this.chunkGroups.clear();this.buildChunkIndex();

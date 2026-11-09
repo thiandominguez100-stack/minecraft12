@@ -125,3 +125,6 @@ button,input{font:inherit}button{color:inherit}
   transition:opacity .22s ease;
 }
 #underwater-overlay.active{opacity:1}
+
+/* Alpha 0.7 — first-person hand is rendered above transparent water. */
+#underwater-overlay{z-index:1}

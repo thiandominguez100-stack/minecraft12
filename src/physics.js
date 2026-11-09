@@ -38,6 +38,7 @@ export class FirstPersonPhysics{
       velocity.y+=(-3.5+this.submersion*8)*dt;
       velocity.y*=Math.exp(-2.4*dt);
       if(controls.jump)velocity.y=Math.min(4.8,velocity.y+11*dt);
+      else if(controls.dive)velocity.y=Math.max(-4.8,velocity.y-12*dt);
 
       const swimX=velocity.x*dt,swimZ=velocity.z*dt;
       const swimSteps=Math.max(1,Math.ceil(Math.max(Math.abs(swimX),Math.abs(swimZ))/.075));
