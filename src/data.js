@@ -63,4 +63,9 @@ export const RECIPES = [
 
 export const ITEM_MAP = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 export const BLOCK_MAP = Object.fromEntries(BLOCKS.map(b=>[b.id,b]));
+export function resolveBlockDrop(blockId){
+ const def=BLOCK_MAP[blockId];
+ if(!def||def.hardness<0)return null;
+ return def.drop??blockId;
+}
 export const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));

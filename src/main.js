@@ -1,17 +1,18 @@
 import * as THREE from "three";
-import {BLOCKS,BLOCK_MAP,ITEMS,ITEM_MAP,RECIPES,clamp} from "./data.js";
+import {BLOCKS,BLOCK_MAP,ITEMS,ITEM_MAP,RECIPES,clamp,resolveBlockDrop} from "./data.js";
 import {VoxelWorld} from "./world.js";
 import {MobSystem} from "./mobs.js";
 import {FirstPersonPhysics} from "./physics.js";
 import {WaterSimulation} from "./fluid.js";
 import {Inventory} from "./inventory.js";
+import {ItemDropSystem} from "./drops.js";
 import {saveGame,loadGame,deleteSave} from "./storage.js";
 
 const $=id=>document.getElementById(id);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8bc7e7);
-scene.fog=new THREE.Fog(0x8bc7e7,52,118);
-const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,140);
+scene.fog=new THREE.Fog(0x8bc7e7,64,168);
+const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,220);
 scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
@@ -27,17 +28,17 @@ armRig.traverse(object=>{if(!object.isMesh)return;object.renderOrder=20;object.f
 armRig.visible=false;
 const skyLight=new THREE.HemisphereLight(0xd9efff,0x66704c,1.7);scene.add(skyLight);
 const sun=new THREE.DirectionalLight(0xffefca,2.1);sun.position.set(-28,42,18);scene.add(sun);
-let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival"),fluid=new WaterSimulation(world);
+let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival"),fluid=new WaterSimulation(world),drops=new ItemDropSystem(scene,world);
 let mobs=new MobSystem(scene,world,world.seed);
 camera.position.set(31,13,31);camera.lookAt(0,4,0);
 let mode="survival",started=false,locked=false,uiOpen=false,dayTime=.25,weather="clear",health=20,hunger=20,selectedTab="items";
 let yaw=0,pitch=0,velocity=new THREE.Vector3();
 const physics=new FirstPersonPhysics();
 const keys={},ray=new THREE.Raycaster();ray.far=6;
-let leftDown=false,miningKey="",miningProgress=0,lastSave=0,lastHunger=0,toastTimer=0;
+let leftDown=false,brokenThisPress=false,miningKey="",miningProgress=0,lastSave=0,lastHunger=0,toastTimer=0;
 let targetHit=null,targetMob=null,toastTimerId=0;
-const rainCount=360,rainPositions=new Float32Array(rainCount*3);
-for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*112;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*112}
+const rainCount=520,rainPositions=new Float32Array(rainCount*3);
+for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*152;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*152}
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
 const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xc9dceb,size:.09,transparent:true,opacity:.56}));rain.visible=false;scene.add(rain);
 
@@ -116,7 +117,7 @@ function updateLoading(progress,detail){
  $("loading-fill").style.width=value+"%";$("loading-percent").textContent=value+"%";
  $("loading-detail").textContent=detail||"Cargando...";
 }
-async function replaceWorld(seed,changes=[],waterSources=[]){
+async function replaceWorld(seed,changes=[],waterSources=[],savedDrops=[]){
  showLoading("Generando un nuevo mundo");
  if(mobs)mobs.dispose();
  scene.remove(world.group);
@@ -145,7 +146,7 @@ async function newWorld(nextMode){
 async function loadIntoGame(data){
  if(!data){notify("No se encontró una partida guardada.");return}
  started=false;
- await replaceWorld(Number(data.seed)||20261109,data.changes||[],data.waterSources||[]);
+ await replaceWorld(Number(data.seed)||20261109,data.changes||[],data.waterSources||[],data.drops||[]);
  inventory=new Inventory(data.mode||"survival");inventory.restore(data.inventory||[]);inventory.selected=clamp(data.selected||0,0,8);
  physics.reset();velocity.set(0,0,0);
  setMode(data.mode==="creative"?"creative":"survival");
@@ -156,7 +157,7 @@ async function loadIntoGame(data){
 }
 function save(){
  if(!started)return;
- const ok=saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources()});
+ const ok=saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources(),drops:drops.serialize()});
  if(ok)notify("Mundo guardado en este navegador.");else notify("No se pudo guardar. Comprueba el almacenamiento del navegador.");
 }
 function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,true).filter(hit=>hit.object.userData.blockId!=="water");return hits.length?hits[0]:null}
@@ -200,16 +201,18 @@ function useSelected(){
  const placed=stack.id==="water"?fluid.addSource(x,y,z):editBlock(x,y,z,stack.id);if(!placed)return;if(mode==="survival")inventory.consumeSelected();renderHotbar();
 }
 function breakBlock(b){
- const def=BLOCK_MAP[b.id];if(!def||def.hardness<0)return;
- editBlock(b.x,b.y,b.z,null);
- if(mode==="survival"&&def.drop){const held=heldItem(),hasTool=held?.tool===def.tool;const needsTool=!!def.tool;const harvest=!needsTool||hasTool;
-  if(harvest){const rest=inventory.add(def.drop,1);if(rest)notify("Inventario lleno: no se recogió "+(ITEM_MAP[def.drop]?.name||def.drop));}
-  if(hasTool)inventory.damageSelected(1);
- }
- renderHotbar();renderInventory();
+ if(brokenThisPress)return false;
+ const def=BLOCK_MAP[b.id];if(!def||def.hardness<0)return false;
+ const held=heldItem(),dropId=resolveBlockDrop(b.id);
+ if(!editBlock(b.x,b.y,b.z,null))return false;
+ brokenThisPress=true;
+ if(mode==="survival"&&dropId)drops.spawn(dropId,[b.x,b.y+.12,b.z],1);
+ if(mode==="survival"&&held?.tool===def.tool)inventory.damageSelected(1);
+ renderHotbar();renderInventory();return true;
 }
 function mineTarget(dt){
  const label=$("target-label");
+ if(brokenThisPress){label.style.opacity="0";return;}
  if(targetMob){
   const name=targetMob.type==="sheep"?"Oveja":targetMob.type==="cow"?"Vaca":"Gallina";
   label.textContent=name+" · "+targetMob.hp+"/"+targetMob.maxHp+" ♥";
@@ -224,7 +227,7 @@ function mineTarget(dt){
  if(!def||def.hardness<0)return;
  const held=heldItem(),correct=held?.tool===def.tool;
  let speed=correct?(1.5+(held.tier||1)*.8):.45;if(!def.tool)speed=1.5;
- miningProgress+=dt*speed/Math.max(.12,def.hardness*1.3);
+ miningProgress+=dt*speed/(Math.max(.25,def.hardness)*1.3);
  if(miningProgress>=1){breakBlock(b);miningProgress=0;miningKey=""}
 }
 function updateVitals(){const hearts=Math.round(health/2),food=Math.round(hunger/2);$("health").textContent="♥ ".repeat(hearts)+"♡ ".repeat(10-hearts);$("hunger").textContent="● ".repeat(food)+"○ ".repeat(10-food)}
@@ -297,8 +300,8 @@ function togglePause(){if(!started)return;setOverlay("pause-overlay",true)}
 function hideOverlay(id){$(id).style.display="none";uiOpen=["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex")}
 renderer.domElement.addEventListener("click",()=>{if(started&&!uiOpen&&!locked)requestLock()});
 renderer.domElement.addEventListener("wheel",e=>{if(!locked)return;inventory.selected=(inventory.selected+(e.deltaY>0?1:8))%9;renderHotbar();renderInventory()},{passive:true});
-renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;miningProgress=0;miningKey="";if(targetMob)hitMob(targetMob)}if(e.button===2)e.preventDefault()});
-renderer.domElement.addEventListener("mouseup",e=>{if(e.button===0)leftDown=false;if(e.button===2&&locked)useSelected()});
+renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;brokenThisPress=false;miningProgress=0;miningKey="";if(targetMob)hitMob(targetMob)}if(e.button===2)e.preventDefault()});
+renderer.domElement.addEventListener("mouseup",e=>{if(e.button===0){leftDown=false;brokenThisPress=false;miningProgress=0;miningKey="";}if(e.button===2&&locked)useSelected()});
 renderer.domElement.addEventListener("contextmenu",e=>e.preventDefault());
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement});
 document.addEventListener("mousemove",e=>{if(!locked)return;yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=clamp(pitch,-1.52,1.52);camera.rotation.order="YXZ";camera.rotation.y=yaw;camera.rotation.x=pitch});
@@ -331,7 +334,7 @@ $("back-menu").onclick=()=>{save();started=false;hideOverlay("pause-overlay");$(
 $("inventory-tabs").addEventListener("click",e=>{const btn=e.target.closest("[data-tab]");if(btn)showTab(btn.dataset.tab)});
 $("catalog-search").addEventListener("input",renderCatalog);
 $("command-input").addEventListener("keydown",e=>{if(e.key==="Enter"){const raw=e.target.value;e.target.value="";if(raw.trim())runCommand(raw)}});
-window.addEventListener("beforeunload",()=>{if(started)saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources()})});
+window.addEventListener("beforeunload",()=>{if(started)saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources(),drops:drops.serialize()})});
 $("hud").classList.add("menu-hidden");
 updateVitals();renderHotbar();renderInventory();renderRecipes();renderCatalog();
 if(!loadGame())$("resume-save").disabled=true;
@@ -347,7 +350,7 @@ function tick(now){
   armRig.rotation.x=leftDown?-.72+Math.sin(now*.018)*.06:stride;
   armRig.rotation.z=moving?Math.cos(now*.009)*.06:0;
  }
- if(started&&!uiOpen){fluid.update(dt);world.updateWaterAnimation(dt)}
+ if(started&&!uiOpen){fluid.update(dt);world.updateWaterAnimation(dt);drops.update(dt,camera.position,inventory,()=>{renderHotbar();renderInventory()})}
  if(started&&locked){
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0),side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const dir=new THREE.Vector3(side,0,-forward);if(dir.lengthSq()>1)dir.normalize();dir.applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
@@ -369,7 +372,7 @@ function tick(now){
   if(mode==="survival"&&Date.now()-lastHunger>45000&&hunger>0){hunger=Math.max(0,hunger-1);lastHunger=Date.now();if(hunger===0)health=Math.max(1,health-1);updateVitals()}
   dayTime=(dayTime+dt/900)%1;updateSky();
   if(weather==="rain"){const p=rainGeo.attributes.position;for(let i=0;i<rainCount;i++){let y=p.array[i*3+1]-dt*18;if(y<camera.position.y-6)y=camera.position.y+12;p.array[i*3+1]=y;p.array[i*3]+=dir.x*dt*2;p.array[i*3+2]+=dir.z*dt*2}p.needsUpdate=true;rain.position.set(camera.position.x,0,camera.position.z)}
-  if(now-lastSave>30000){saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources()});lastSave=now}
+  if(now-lastSave>30000){saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources(),drops:drops.serialize()});lastSave=now}
  }
  renderer.render(scene,camera);
 }
