@@ -2,12 +2,12 @@ import * as THREE from "three";
 import {ITEM_MAP,BLOCK_MAP} from "./data.js";
 import {waterSurfaceY} from "./water-surface.js";
 const makeTexture=id=>{
- const canvas=document.createElement("canvas");canvas.width=16;canvas.height=16;
+ const canvas=document.createElement("canvas");canvas.width=64;canvas.height=64;
  const ctx=canvas.getContext("2d"),def=ITEM_MAP[id]||BLOCK_MAP[id],base=new THREE.Color(def?.color??0xc0c0c0);
  const shade=f=>"#"+base.clone().multiplyScalar(f).getHexString();
- ctx.fillStyle=shade(.56);ctx.fillRect(0,0,16,16);ctx.fillStyle=shade(.92);ctx.fillRect(2,2,12,12);
- for(let y=2;y<14;y++)for(let x=2;x<14;x++){const n=(x*17+y*31+id.length*13)%23;if(n===0||n===7){ctx.fillStyle=shade(1.18);ctx.fillRect(x,y,1,1);}}
- ctx.fillStyle=shade(1.35);ctx.fillRect(3,3,5,1);ctx.fillRect(3,4,1,4);
+ ctx.fillStyle=shade(.56);ctx.fillRect(0,0,16,16);ctx.fillStyle=shade(.92);ctx.fillRect(4,4,56,56);
+ for(let y=4;y<60;y++)for(let x=4;x<60;x++){const n=(x*17+y*31+id.length*13)%23;if(n===0||n===7){ctx.fillStyle=shade(1.18);ctx.fillRect(x,y,2,2);}}
+ ctx.fillStyle=shade(1.35);ctx.fillRect(8,8,18,4);ctx.fillRect(8,12,4,14);
  const t=new THREE.CanvasTexture(canvas);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.colorSpace=THREE.SRGBColorSpace;t.generateMipmaps=false;return t;
 };
 export class ItemDropSystem{
