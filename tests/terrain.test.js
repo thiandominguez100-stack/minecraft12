@@ -60,6 +60,7 @@ test("biomes and shorelines return valid surface definitions",()=>{
   }
 });
 
+test("natural water level is lowered by one voxel block",()=>{assert.equal(WATER_LEVEL,4);});
 test("river and lake beds rise smoothly into shallow shores at the water line",()=>{
  for(const [core,fade] of [[13.5,24],[13.0,22],[10.5,20],[11.0,21]]){
   const heights=[0,1,2,core,core+1,fade].map(d=>waterBankHeight(d,18,core,fade,2.3,4.45));
