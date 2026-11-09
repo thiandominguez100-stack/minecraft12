@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP} from "./data.js";
-import {makeBlockTexture} from "./textures.js";
-import {blockMaterialSettings} from "./texture-spec.js";
 import {buildWaterSurface,waterSurfaceY,waterWaveHeight} from "./water-surface.js";
 import {greedyMeshChunk} from "./greedy-meshing.js";
+import {getBlockAtlasResources} from "./block-atlas.js";
+import {batchGreedyMeshes} from "./mesh-batching.js";
 import {
   CHUNK_SIZE,CHUNKS_X,CHUNKS_Z,TOTAL_CHUNKS,WORLD_MIN_X,WORLD_MIN_Z,
   WORLD_WIDTH,WORLD_DEPTH,WORLD_MAX_X,WORLD_MAX_Z,WATER_LEVEL,
@@ -34,17 +34,11 @@ export class VoxelWorld{
     this.scene=scene;this.seed=seed;
     this.blocks=new Map();this.base=new Map();this.changes=new Map();this.waterSources=new Set();this.waterStates=new Map();
     this.group=new THREE.Group();this.group.name="WorldChunkRoot";scene.add(this.group);
-    this.materials=new Map();this.chunkGroups=new Map();this.chunkBlocks=new Map();
+    this.chunkGroups=new Map();this.chunkBlocks=new Map();
     this.chunkSize=CHUNK_SIZE;this.chunkCount=TOTAL_CHUNKS;this.renderDistanceChunks=6.5;this.renderCenter={x:0,z:0,ix:NaN,iz:NaN};
     this.bounds={minX:WORLD_MIN_X,maxX:WORLD_MAX_X,minZ:WORLD_MIN_Z,maxZ:WORLD_MAX_Z,width:WORLD_WIDTH,depth:WORLD_DEPTH};
-    const faces=["right","left","top","bottom","front","back"];
-    for(const def of BLOCKS){
-      const settings=blockMaterialSettings(def.id);
-      const materials=faces.map(face=>new THREE.MeshLambertMaterial({
-        map:makeBlockTexture(def,face),...settings
-      }));
-      this.materials.set(def.id,materials);
-    }
+    const atlas=getBlockAtlasResources();
+    this.blockAtlasTexture=atlas.texture;this.blockAtlasRects=atlas.rects;this.blockMaterials=atlas.materials;
     const waterTexture=makeWaterTexture();
     this.waterMaterial=new THREE.MeshBasicMaterial({
       map:waterTexture,color:0xffffff,transparent:false,opacity:1,
@@ -313,15 +307,15 @@ export class VoxelWorld{
     chunkGroup.userData={chunkX:ix,chunkZ:iz,blockSize:CHUNK_SIZE};
     const entries=this.chunkBlocks.get(chunkKey)||new Map(),waterCoords=[];
     const blockMeshes=greedyMeshChunk(entries.values(),(x,y,z)=>this.get(x,y,z),BLOCK_MAP);
-    for(const [id,data] of blockMeshes){
+    const batches=batchGreedyMeshes(blockMeshes,BLOCK_MAP,this.blockAtlasRects);
+    for(const [category,data] of batches){
       const geometry=new THREE.BufferGeometry();
       geometry.setAttribute("position",new THREE.Float32BufferAttribute(data.positions,3));
       geometry.setAttribute("uv",new THREE.Float32BufferAttribute(data.uvs,2));
-      geometry.setIndex(data.indices);
-      for(const group of data.groups)geometry.addGroup(group.start,group.count,group.materialIndex);
-      geometry.computeVertexNormals();geometry.computeBoundingSphere();
-      const mesh=new THREE.Mesh(geometry,this.materials.get(id));
-      mesh.userData={blockId:id,greedyMesh:true,chunkGeometry:true,quadCount:data.quadCount};
+      geometry.setAttribute("atlasRect",new THREE.Float32BufferAttribute(data.atlasRects,4));
+      geometry.setIndex(data.indices);geometry.computeVertexNormals();geometry.computeBoundingSphere();
+      const mesh=new THREE.Mesh(geometry,this.blockMaterials[category]);
+      mesh.userData={blockId:"voxel-batch",greedyMesh:true,chunkGeometry:true,meshCategory:category,quadCount:data.quadCount,blockTypes:data.blockTypes};
       chunkGroup.add(mesh);
     }
     for(const item of entries.values())if(item.id==="water")waterCoords.push([item.x,item.y,item.z]);
