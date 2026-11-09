@@ -114,3 +114,5 @@ button,input{font:inherit}button{color:inherit}
  .menu-side{padding:15px}
  .side-feature{padding:7px 0}
 }
+
+#hud.menu-hidden{display:none}
