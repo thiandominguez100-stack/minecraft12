@@ -195,3 +195,11 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Water now uses an opaque, unlit, depth-tested MeshBasicMaterial with a dedicated blue animated pixel-water texture. The renderer draws the water surface after terrain, while depth testing still prevents it from appearing through solid terrain.
 - Kept the existing fluid simulation for flowing, falling, swimming and water placement; only the visual surface renderer was replaced.
 - Added tests for visible top faces, continuous neighboring surfaces, correct waterline height and real water-block volume in generated river/lake basins.
+
+## Alpha 1.4.1 — lower, gently animated water
+
+- Lowered the natural river/lake waterline from block level 5 to block level 4, reducing the visible water volume by one voxel layer while preserving the existing shoreline alignment and swimming/submersion tests.
+- Rebuilt each exposed water top into a 3 × 3 grid per cell. A shared world-space wave function gently displaces the grid vertices, so wave motion stays continuous across adjacent cells and chunk borders.
+- Added multi-scale low-amplitude surface waves and faster, slower-than-ripple texture drift for a more fluid appearance without bringing back the custom GLSL shader.
+- Kept an opaque, depth-tested, unlit water material as the stable visibility baseline.
+- Old saves migrate natural source coordinates from the previous y=5 waterline so the lowered river does not reactivate legacy high-level sources.
