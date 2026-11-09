@@ -26,7 +26,7 @@ test("coplanar faces of different block materials never merge",()=>{
 });
 test("opaque neighbors hide internal faces while glass and foliage keep cutout boundaries",()=>{
  const a=makeWorld([block(0,0,0,"stone"),block(1,0,0,"glass")]),ma=greedyMeshChunk(a.entries,a.get,BLOCK_MAP);
- assert.equal(ma.get("stone").quadCount,5);assert.equal(ma.get("glass").quadCount,5);
+ assert.equal(ma.get("stone").quadCount,6,"opaque stone remains visible behind transparent glass");assert.equal(ma.get("glass").quadCount,5,"glass face against opaque stone is occluded");
  const b=makeWorld([block(0,0,0,"stone"),block(1,0,0,"leaves")]),mb=greedyMeshChunk(b.entries,b.get,BLOCK_MAP);
  assert.equal(mb.get("stone").quadCount,6);assert.equal(mb.get("leaves").quadCount,5);
 });
