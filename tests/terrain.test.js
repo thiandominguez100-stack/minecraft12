@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   CHUNK_SIZE,CHUNKS_X,CHUNKS_Z,TOTAL_CHUNKS,
   WORLD_MIN_X,WORLD_MIN_Z,WORLD_MAX_X,WORLD_MAX_Z,
-  chunkAddress,isInsideWorld,terrainSample,riverCenterAt,mountainCenter,waterBankHeight
+  chunkAddress,isInsideWorld,terrainSample,riverCenterAt,mountainCenter,waterBankHeight,WATER_LEVEL
 } from "../src/terrain.js";
 
 test("the world contains one hundred forty-four complete 16x16 chunks",()=>{
@@ -61,9 +61,31 @@ test("biomes and shorelines return valid surface definitions",()=>{
 });
 
 test("river and lake beds rise smoothly into shallow shores at the water line",()=>{
- for(const [core,fade] of [[2.8,26],[5.7,26],[5.0,26],[5.4,26]]){
-  const heights=[0,1,2,core,core+1,fade].map(d=>waterBankHeight(d,18,core,fade,2.6,4.55));
+ for(const [core,fade] of [[13.5,24],[13.0,22],[10.5,20],[11.0,21]]){
+  const heights=[0,1,2,core,core+1,fade].map(d=>waterBankHeight(d,18,core,fade,2.3,5.0));
   for(let i=1;i<heights.length;i++)assert.ok(heights[i]>=heights[i-1],"shore should never descend outwards");
   assert.ok(heights[0]<=3);assert.ok(heights[3]<=5);assert.equal(heights[5],18);
  }
+});
+
+test("the river centerline and lake cores generate connected natural water columns",()=>{
+ for(const seed of [1,12345,20261109]){
+  let riverWater=0,riverSources=0;
+  for(let x=-80;x<=80;x++){
+   const z=Math.round(riverCenterAt(x,seed)),sample=terrainSample(x,z,seed);
+   if(sample.isWaterColumn&&sample.height<WATER_LEVEL)riverWater++;
+   if(sample.waterSource)riverSources++;
+  }
+  assert.ok(riverWater>140,"the river should contain water across almost its entire length");
+  assert.ok(riverSources>=25,"sparse source blocks should maintain the natural river");
+  const m=terrainSample(17,-14,seed);
+  assert.equal(typeof m.isWaterColumn,"boolean");
+ });
+});
+test("waterline terrain reaches the same block height at the dry bank",()=>{
+ const bed=waterBankHeight(0,16,13.5,24,2.2,5);
+ const nearBank=waterBankHeight(9.5,16,13.5,24,2.2,5);
+ const dryBank=waterBankHeight(13.5,16,13.5,24,2.2,5);
+ assert.ok(bed<nearBank);
+ assert.equal(dryBank,5);
 });
