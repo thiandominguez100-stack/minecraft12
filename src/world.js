@@ -79,7 +79,7 @@ export class VoxelWorld{
       }));
       this.materials.set(def.id,materials);
     }
-    if(!options.defer){this.generate();this.base=new Map(this.blocks);this.rebuild();}
+    if(!options.defer)this.generate();
   }
 
   putBlock(x,y,z,id){
@@ -94,7 +94,7 @@ export class VoxelWorld{
       let id;
       if(y===-5)id="bedrock";
       else if(y===height)id=surface;
-      else if(y>=height-2)id="dirt";
+      else if(y>=height-2)id=surface==="sand"?"sand":surface==="stone"||surface==="snow"?"stone":"dirt";
       else id="stone";
       if(y>=-3&&y<height-2){
         const ore=hash(x+y*17,z+y*29,this.seed+101);
@@ -238,7 +238,7 @@ export class VoxelWorld{
   isSolid(x,y,z){
     const id=this.get(x,y,z);
     if(!id)return false;
-    return BLOCK_MAP[id]?.solid!==false&&id!=="water"&&id!=="leaves"&&id!=="torch"&&id!=="moss";
+    return BLOCK_MAP[id]?.solid!==false&&id!=="water"&&id!=="leaves"&&id!=="torch";
   }
   highest(x,z){for(let y=32;y>=-5;y--){const id=this.get(x,y,z);if(id&&this.isSolid(x,y,z))return y;}return 2;}
   collides(pos,r=.29,height=1.8){
