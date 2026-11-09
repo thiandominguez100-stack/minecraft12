@@ -44,3 +44,35 @@ test("a new jump is available as soon as the player lands",()=>{
   physics.update(world,p.position,p.velocity,{x:0,z:0,speed:4.8},1/60);
   assert.ok(p.velocity.y>8);
 });
+
+test("water immersion enables buoyancy instead of normal falling",()=>{
+  const physics=new FirstPersonPhysics(),world={
+    ...flatWorld(),
+    getSubmersion:()=>.75
+  },p=player();
+  physics.update(world,p.position,p.velocity,{x:0,z:0,speed:4.8},1/60);
+  assert.equal(physics.inWater,true);
+  assert.equal(physics.onGround,false);
+  assert.ok(p.velocity.y>0,"buoyancy should push the player upward");
+});
+
+test("holding Space gives an upward swimming stroke",()=>{
+  const physics=new FirstPersonPhysics(),world={
+    ...flatWorld(),
+    getSubmersion:()=>.75
+  },p=player();
+  physics.update(world,p.position,p.velocity,{x:0,z:0,speed:4.8,jump:true},.05);
+  assert.equal(physics.inWater,true);
+  assert.ok(p.velocity.y>.5,"Space should provide upward swim force");
+});
+
+test("horizontal swimming accelerates the player through water",()=>{
+  const physics=new FirstPersonPhysics(),world={
+    ...flatWorld(),
+    getSubmersion:()=>.8
+  },p=player();
+  physics.update(world,p.position,p.velocity,{x:1,z:0,speed:4.8},.05);
+  assert.equal(physics.inWater,true);
+  assert.ok(p.velocity.x>0);
+  assert.ok(p.position.x>0);
+});
