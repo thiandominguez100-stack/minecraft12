@@ -16,14 +16,115 @@
 </div>
 <div id="underwater-overlay" aria-hidden="true"></div>
 <div class="overlay" id="inventory-overlay">
- <div class="panel">
-  <div class="panel-head"><div><h2>Inventario</h2><p class="subtitle">Organiza tus objetos, selecciona bloques y fabrica herramientas.</p></div><button class="btn" id="close-inventory">Cerrar ✕</button></div>
-  <div class="tabs" id="inventory-tabs"><button class="tab active" data-tab="items">Objetos</button><button class="tab" data-tab="crafting">Fabricación</button><button class="tab" data-tab="catalog">Catálogo creativo</button></div>
-  <div id="inventory-items">
-   <div id="inventory-layout"><div><div class="section-box"><h3>Almacenamiento · 36 espacios</h3><div id="inventory-grid"></div></div><div class="section-box"><h3>Barra rápida</h3><p class="subtitle">Los primeros nueve espacios corresponden a las teclas 1–9.</p></div></div><div><div class="section-box"><h3>Objeto seleccionado</h3><div id="selected-info" class="subtitle">Selecciona un objeto.</div></div><div class="section-box"><h3>Consejo</h3><p class="subtitle">En supervivencia, los recursos se consumen al construir. En creativo, los objetos son ilimitados.</p></div></div></div>
+ <div class="panel inventory-panel">
+  <div class="panel-head"><div><h2>Inventario</h2><p class="subtitle">Tu personaje, materiales y fabricación por cuadrícula.</p></div><button class="btn" id="close-inventory">Cerrar ✕</button></div>
+  <div class="tabs" id="inventory-tabs">
+   <button class="tab active" data-tab="items">Inventario · 2×2</button>
+   <button class="tab" data-tab="crafting">Mesa de trabajo · 3×3</button>
+   <button class="tab" data-tab="catalog">Catálogo creativo</button>
   </div>
-  <div id="inventory-crafting" class="hidden"><div class="section-box"><h3>Recetas disponibles</h3><p class="subtitle">Algunas recetas requieren una mesa de trabajo en tu inventario. Los materiales se descuentan al fabricar.</p><div id="recipe-list"></div></div></div>
-  <div id="inventory-catalog" class="hidden"><input id="catalog-search" placeholder="Buscar bloques y objetos..." style="width:100%;padding:10px;background:#0e151c;color:white;border:1px solid var(--line);border-radius:8px;margin-bottom:10px"><div id="catalog"></div></div>
+  <div id="inventory-items">
+   <div id="inventory-layout">
+    <section class="inventory-character-column">
+     <div class="section-box character-card">
+      <h3>Personaje</h3>
+      <div id="player-preview" aria-label="Vista previa de tu personaje">
+       <svg viewBox="0 0 180 220" role="img" aria-label="Personaje de BlockWorld con cabeza, torso, brazos y piernas">
+        <g shape-rendering="crispEdges" stroke="#111923" stroke-width="2" stroke-linejoin="round">
+         <polygon points="55,27 78,12 130,12 108,28" fill="#b18a68"/>
+         <polygon points="108,28 130,12 130,62 108,78" fill="#76533c"/>
+         <rect x="55" y="27" width="53" height="51" fill="#d2a27d"/>
+         <polygon points="55,27 108,27 108,39 55,39" fill="#49332c"/>
+         <rect x="55" y="27" width="15" height="27" fill="#49332c"/>
+         <rect x="92" y="49" width="6" height="6" fill="#26333c" stroke="none"/>
+         <rect x="70" y="49" width="6" height="6" fill="#26333c" stroke="none"/>
+         <rect x="77" y="64" width="18" height="4" fill="#875544" stroke="none"/>
+         <polygon points="48,82 71,68 126,68 104,83" fill="#8fb4bf"/>
+         <polygon points="104,83 126,68 126,139 104,154" fill="#355a70"/>
+         <rect x="48" y="82" width="56" height="72" fill="#527e91"/>
+         <polygon points="25,87 48,73 66,79 45,94" fill="#c99575"/>
+         <polygon points="45,94 66,79 66,145 45,160" fill="#385e72"/>
+         <rect x="25" y="87" width="20" height="65" fill="#47677c"/>
+         <polygon points="104,83 126,68 146,78 124,93" fill="#c99575"/>
+         <polygon points="124,93 146,78 146,142 124,157" fill="#385e72"/>
+         <rect x="104" y="83" width="20" height="65" fill="#47677c"/>
+         <polygon points="49,155 72,141 101,153 80,168" fill="#435b88"/>
+         <polygon points="80,168 101,153 101,204 80,217" fill="#263c67"/>
+         <rect x="49" y="155" width="31" height="54" fill="#35507e"/>
+         <polygon points="80,155 103,141 132,153 109,168" fill="#435b88"/>
+         <polygon points="109,168 132,153 132,204 109,217" fill="#263c67"/>
+         <rect x="80" y="155" width="29" height="54" fill="#35507e"/>
+         <rect x="49" y="204" width="31" height="10" fill="#342b29"/>
+         <rect x="80" y="204" width="29" height="10" fill="#342b29"/>
+        </g>
+       </svg>
+       <span>Explorador</span>
+      </div>
+      <div class="character-note">Vista previa · equipamiento básico</div>
+     </div>
+     <div class="section-box">
+      <h3>Objeto seleccionado</h3>
+      <div id="selected-info" class="subtitle">Selecciona un objeto.</div>
+     </div>
+    </section>
+    <section class="inventory-storage-column">
+     <div class="section-box">
+      <h3>Inventario principal · 27 espacios</h3>
+      <div id="inventory-grid"></div>
+     </div>
+     <div class="section-box">
+      <h3>Barra rápida · teclas 1–9</h3>
+      <div id="inventory-hotbar-grid"></div>
+     </div>
+     <p class="subtitle inventory-help">Pulsa una celda de fabricación y luego un material para colocar una unidad. Pulsa el material colocado para devolverlo.</p>
+    </section>
+    <section class="inventory-crafting-column">
+     <div class="section-box">
+      <h3>Fabricación personal · 2×2</h3>
+      <p class="subtitle">Convierte troncos en tablones, fabrica palos y crea tu mesa de trabajo.</p>
+      <div class="crafting-layout">
+       <div id="personal-craft-grid" class="craft-grid craft-grid-2" aria-label="Cuadrícula de fabricación personal"></div>
+       <div class="craft-arrow">➜</div>
+       <button id="personal-craft-output" class="craft-output" type="button" aria-label="Resultado de fabricación" disabled></button>
+      </div>
+      <div id="personal-craft-result" class="craft-result">Coloca materiales en la cuadrícula.</div>
+     </div>
+     <div class="section-box craft-recipe-hint">
+      <h3>Primeros pasos</h3>
+      <p class="subtitle">1. Coloca un tronco para obtener 4 tablones.</p>
+      <p class="subtitle">2. Coloca 4 tablones en un cuadrado para crear una mesa de trabajo.</p>
+      <p class="subtitle">3. Colócala en el mundo y haz clic derecho sobre ella para abrir la cuadrícula 3×3.</p>
+     </div>
+    </section>
+   </div>
+  </div>
+  <div id="inventory-crafting" class="hidden">
+   <div id="workbench-locked" class="section-box workbench-locked">
+    <div class="workbench-lock-icon">▦</div>
+    <h3>Necesitas una mesa de trabajo</h3>
+    <p class="subtitle">Fabrícala en la cuadrícula personal 2×2, selecciónala en la barra rápida, colócala en el mundo y haz clic derecho sobre ella.</p>
+   </div>
+   <div id="workbench-ready" class="workbench-ready hidden">
+    <div class="section-box">
+     <h3>Mesa de trabajo · Fabricación 3×3</h3>
+     <p class="subtitle">Combina madera, piedra y minerales para fabricar herramientas y estaciones.</p>
+     <div class="crafting-layout workbench-layout">
+      <div id="workbench-craft-grid" class="craft-grid craft-grid-3" aria-label="Cuadrícula de mesa de trabajo"></div>
+      <div class="craft-arrow">➜</div>
+      <button id="workbench-craft-output" class="craft-output" type="button" aria-label="Resultado de mesa de trabajo" disabled></button>
+     </div>
+     <div id="workbench-craft-result" class="craft-result">Coloca materiales en la cuadrícula.</div>
+    </div>
+    <div class="section-box">
+     <h3>Recetas disponibles</h3>
+     <div id="recipe-list" class="recipe-book"></div>
+    </div>
+   </div>
+  </div>
+  <div id="inventory-catalog" class="hidden">
+   <input id="catalog-search" placeholder="Buscar bloques y objetos..." style="width:100%;padding:10px;background:#0e151c;color:white;border:1px solid var(--line);border-radius:8px;margin-bottom:10px">
+   <div id="catalog"></div>
+  </div>
  </div>
 </div>
 <div class="overlay" id="command-overlay">
