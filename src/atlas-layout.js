@@ -4,6 +4,12 @@ export function atlasTileRect(blockIndex,faceIndex){
  if(!Number.isInteger(faceIndex)||faceIndex<0||faceIndex>5)throw new RangeError("faceIndex must be between 0 and 5");
  const tile=blockIndex*6+faceIndex,column=tile%ATLAS_COLUMNS,row=Math.floor(tile/ATLAS_COLUMNS);
  if(row>=ATLAS_ROWS)throw new RangeError("Block texture atlas is full");
- const size=1/ATLAS_COLUMNS;
- return [column*size,(ATLAS_ROWS-1-row)*size,size,size];
+ const atlasWidth=ATLAS_COLUMNS*ATLAS_TILE_SIZE,atlasHeight=ATLAS_ROWS*ATLAS_TILE_SIZE;
+ const inset=.5,usableSize=ATLAS_TILE_SIZE-1;
+ return [
+  (column*ATLAS_TILE_SIZE+inset)/atlasWidth,
+  ((ATLAS_ROWS-1-row)*ATLAS_TILE_SIZE+inset)/atlasHeight,
+  usableSize/atlasWidth,
+  usableSize/atlasHeight
+ ];
 }

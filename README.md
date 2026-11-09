@@ -11,7 +11,7 @@
 
 The app loads Three.js from jsDelivr, so the first load requires an internet connection.
 
-## Current alpha features
+## Alpha 1.5.3 — atlas sampling correction\n\n- Replaced fragile texture-sample string substitution with an explicit Three.js `map_fragment` replacement; unknown shader layouts now fail loudly instead of silently sampling the full atlas.\n- Inset each atlas sampling rectangle by half a texel to keep nearest-filtered UVs inside their own 64×64 tile.\n- Added regression tests for shader patching, unexpected shader layouts and atlas tile boundaries.\n\n## Current alpha features
 
 - A prebuilt 64-chunk world: 8 × 8 chunks, each 16 × 16 blocks (128 × 128 block footprint).
 - Smooth, seeded terrain with connected hills, a tall snowy mountain, a winding river, a lake, meadow/forest/desert zones, broad-canopy trees, stone outcrops and a ruined landmark.

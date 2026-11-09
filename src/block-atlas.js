@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {BLOCKS} from "./data.js";
 import {makeBlockTexture} from "./textures.js";
+import {patchAtlasShader} from "./atlas-shader.js";
 import {atlasTileRect,ATLAS_COLUMNS,ATLAS_ROWS,ATLAS_TILE_SIZE} from "./atlas-layout.js";
 
 let sharedResources=null;
@@ -30,25 +31,8 @@ function createAtlasTexture(){
 }
 function createAtlasMaterial(texture,settings={},variant="opaque"){
  const material=new THREE.MeshLambertMaterial({map:texture,...settings});
- material.onBeforeCompile=shader=>{
-  shader.vertexShader=shader.vertexShader.replace(
-   "#include <common>",
-   "#include <common>\nattribute vec4 atlasRect;\nvarying vec4 vAtlasRect;"
-  );
-  shader.vertexShader=shader.vertexShader.replace(
-   "#include <begin_vertex>",
-   "#include <begin_vertex>\nvAtlasRect = atlasRect;"
-  );
-  shader.fragmentShader=shader.fragmentShader.replace(
-   "#include <common>",
-   "#include <common>\nvarying vec4 vAtlasRect;"
-  );
-  const standardSample="texture2D( map, vMapUv )";
-  const atlasSample="texture2D( map, vAtlasRect.xy + fract(vMapUv) * vAtlasRect.zw )";
-  if(shader.fragmentShader.includes(standardSample))shader.fragmentShader=shader.fragmentShader.replaceAll(standardSample,atlasSample);
-  else if(shader.fragmentShader.includes("texture2D(map, vMapUv)"))shader.fragmentShader=shader.fragmentShader.replaceAll("texture2D(map, vMapUv)",atlasSample);
- };
- material.customProgramCacheKey=()=>"blockworld-atlas-r1-"+variant;
+ material.onBeforeCompile=shader=>patchAtlasShader(shader);
+ material.customProgramCacheKey=()=>"blockworld-atlas-r2-"+variant;
  material.needsUpdate=true;
  return material;
 }

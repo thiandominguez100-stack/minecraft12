@@ -11,10 +11,17 @@ test("six faces of one block map to six unique atlas tiles",()=>{
  assert.ok(rects.every(r=>r.every(Number.isFinite)));
  assert.ok(rects.every(([x,y,w,h])=>x>=0&&y>=0&&x+w<=1&&y+h<=1));
 });
-test("different block types cannot share a texture atlas tile",()=>{
+test("different block types cannot share an atlas tile",()=>{
  const a=atlasTileRect(0,5),b=atlasTileRect(1,0);
  assert.notDeepEqual(a,b);
  assert.equal(a[1],b[1]);assert.equal(b[0]-a[0],1/ATLAS_COLUMNS);
+});
+test("atlas sampling rectangles stay inside the half-pixel inset of each tile",()=>{
+ const [x,y,w,h]=atlasTileRect(0,0),atlasSize=ATLAS_COLUMNS*ATLAS_TILE_SIZE;
+ assert.equal(x*atlasSize,.5);
+ assert.equal(y*atlasSize,.5);
+ assert.equal(w*atlasSize,ATLAS_TILE_SIZE-1);
+ assert.equal(h*atlasSize,ATLAS_TILE_SIZE-1);
 });
 test("the atlas rejects invalid face indices and capacity overflow",()=>{
  assert.throws(()=>atlasTileRect(0,6),RangeError);
