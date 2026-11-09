@@ -1,6 +1,6 @@
 # BlockWorld 3D
 
-**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.3.1**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
+**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.4.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
 
 ## Play with GitHub Pages
 
@@ -13,12 +13,13 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 
 ## Current alpha features
 
-- Procedural voxel terrain with hills, trees, water and scattered ore deposits.
+- A prebuilt 12-chunk world: 4 × 3 chunks, each 16 × 16 blocks (64 × 48 block footprint).
+- Smooth, seeded terrain with connected hills, a tall snowy mountain, a winding river, a lake, meadow/forest/desert zones, broad-canopy trees, stone outcrops and a ruined landmark.
 - Cinematic title screen with a live, orbiting 3D landscape preview.
 - First-person voxel arm with idle, walking and mining motion.
-- A staged loading screen with progress tied to terrain generation and mesh construction.
+- A staged loading screen reporting progress across all 12 terrain chunks and their separate meshes.
 - Per-face 16×16 pixel textures with distinct grass, log, foliage and ore details.
-- Instanced block rendering with six-face material groups.
+- Per-chunk instanced block batches, with edits rebuilding only the affected chunk.
 - Instanced block rendering for a lower draw-call count.
 - First-person camera with buffered jumping, stable ground detection, AABB collision, gravity substeps, horizontal acceleration and air control.
 - Jump input has no artificial cooldown; a short input buffer prevents presses from being lost just before landing.
@@ -73,7 +74,17 @@ Some item IDs: `grass`, `dirt`, `stone`, `cobblestone`, `oak_log`, `oak_planks`,
 
 World edits, player position, inventory, game mode, time and weather are stored in the browser's localStorage. A save is local to the browser and device that created it. Clearing site data or changing browser profiles can remove access to that save.
 
-## Alpha 0.3.1 — current gameplay fixes
+## Alpha 0.4.0 — chunked world and terrain overhaul
+
+- Expanded the play area from 45 × 45 to 64 × 48 block columns.
+- Added 12 pre-generated chunks of 16 × 16 blocks arranged 4 × 3.
+- Replaced independent per-column height randomness with continuous seeded value noise and gradual height transitions.
+- Added a distinct mountain region, winding watercourse, lake basin, sandy banks, desert patch, broader forest, stone boulders and a large ruin.
+- Built a separate instanced mesh group per chunk and changed raycasting to traverse those groups.
+- Updated block placement/mining to rebuild only its affected chunk.
+- Added regression tests for chunk coverage, deterministic terrain and neighboring height continuity.
+
+## Alpha 0.3.1 — gameplay fixes
 
 - Fixed the grounded-state flicker that pulled the player down and snapped them up every other frame.
 - Replaced corner-only collision checks with a full player AABB query.
@@ -84,6 +95,6 @@ World edits, player position, inventory, game mode, time and weather are stored 
 
 ## Development status
 
-This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass with 64×32 (2,048-pixel) per-species atlases: they do not yet have combat, breeding, drops, sound, collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, chunk streaming, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
+This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass with 64×32 (2,048-pixel) per-species atlases: they do not yet have combat, breeding, drops, sound, collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, infinite chunk streaming beyond the current 12-chunk map, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
 
 The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROADMAP.md).
