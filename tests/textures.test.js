@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {BLOCKS} from "../src/data.js";
-import {BLOCK_TEXTURE_SIZE,BLOCK_TEXTURE_PROFILES} from "../src/textures.js";
+import {BLOCK_TEXTURE_SIZE,BLOCK_TEXTURE_PROFILES} from "../src/texture-spec.js";
 
 test("every block has a custom 64 by 64 texture profile",()=>{
   assert.equal(BLOCK_TEXTURE_SIZE,64);
