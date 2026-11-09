@@ -128,3 +128,97 @@ button,input{font:inherit}button{color:inherit}
 
 /* Alpha 0.7 — first-person hand is rendered above transparent water. */
 #underwater-overlay{z-index:1}
+
+
+/* Alpha 1.0 — Minecraft-inspired character inventory and shaped crafting. */
+#inventory-overlay .inventory-panel{width:min(1160px,98vw);max-height:93vh;padding:16px}
+#inventory-layout{
+ display:grid;
+ grid-template-columns:minmax(150px,.72fr) minmax(280px,1.25fr) minmax(230px,.9fr);
+ gap:12px;align-items:start
+}
+.inventory-character-column,.inventory-storage-column,.inventory-crafting-column{min-width:0}
+.character-card{background:linear-gradient(160deg,#263543,#141c25)}
+#player-preview{
+ min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:7px;border-radius:9px;
+ background:radial-gradient(ellipse at 50% 45%,#6a839155,#1a2732 72%);
+ border:1px solid #ffffff16;overflow:hidden
+}
+#player-preview svg{width:min(100%,172px);height:178px;filter:drop-shadow(0 12px 10px #0008)}
+#player-preview span{font-size:11px;font-weight:700;letter-spacing:.08em;color:#dbe6ed}
+.character-note{font-size:10px;color:#94a3af;text-align:center;margin-top:8px}
+.inventory-storage-column .section-box{padding:10px}
+#inventory-grid{grid-template-columns:repeat(9,minmax(28px,1fr));gap:4px}
+#inventory-hotbar-grid{display:grid;grid-template-columns:repeat(9,minmax(28px,1fr));gap:4px}
+#inventory-grid .inv-slot,#inventory-hotbar-grid .inv-slot{min-height:34px}
+#inventory-hotbar-grid .inv-slot{background:#303b46;border-color:#ffffff39}
+.inventory-help{padding:0 3px;line-height:1.5}
+.inventory-crafting-column .section-box{padding:12px}
+.crafting-layout{display:flex;align-items:center;justify-content:center;gap:11px;margin:16px 0 8px}
+.craft-grid{display:grid;gap:4px;flex:none}
+.craft-grid-2{grid-template-columns:repeat(2,51px);grid-template-rows:repeat(2,51px)}
+.craft-grid-3{grid-template-columns:repeat(3,49px);grid-template-rows:repeat(3,49px)}
+.craft-slot{
+ display:flex;align-items:center;justify-content:center;position:relative;
+ border:2px solid #ffffff45;border-radius:4px;background:linear-gradient(145deg,#34414d,#222c37);
+ box-shadow:inset 2px 2px #ffffff0b,inset -3px -3px #0004;
+ cursor:pointer;padding:0;min-width:0
+}
+.craft-slot:hover{border-color:#a9d990;background:#415260}
+.craft-slot.active{outline:2px solid #e4bd68;border-color:#fff}
+.craft-slot .item-icon{width:62%;height:62%;image-rendering:pixelated}
+.craft-plus{font-size:19px;color:#ffffff25}
+.craft-arrow{font-size:24px;color:#b8c5ce;text-shadow:0 2px #0007}
+.craft-output{
+ width:58px;height:58px;flex:none;position:relative;display:flex;align-items:center;justify-content:center;
+ background:linear-gradient(145deg,#3d4a55,#222c37);border:2px solid #ffffff58;border-radius:5px;
+ box-shadow:inset 2px 2px #ffffff0b,inset -3px -3px #0004;cursor:pointer
+}
+.craft-output:not(:disabled):hover{border-color:#a9d990;filter:brightness(1.15)}
+.craft-output:disabled{opacity:.48;cursor:not-allowed}
+.craft-output .item-icon{width:34px;height:34px}
+.craft-output-count{position:absolute;right:3px;bottom:2px;font-weight:800;font-size:11px;text-shadow:1px 1px #000}
+.craft-output-empty{font-size:22px;color:#ffffff4a}
+.craft-result{min-height:32px;text-align:center;color:#c9d6de;font-size:10px;line-height:1.5;padding:4px 0}
+.craft-recipe-hint p{margin:7px 0;line-height:1.5}
+#inventory-crafting{max-height:72vh;overflow:auto}
+.workbench-locked{text-align:center;padding:48px 20px}
+.workbench-lock-icon{font-size:48px;color:#9fc87b;margin-bottom:10px;text-shadow:0 4px #0006}
+.workbench-locked h3{font-size:18px}
+.workbench-ready{display:grid;grid-template-columns:minmax(320px,1fr) minmax(230px,.8fr);gap:12px;align-items:start}
+.workbench-ready .section-box{padding:16px}
+.workbench-layout{justify-content:flex-start;gap:24px;margin:20px 0 10px 12px}
+.workbench-layout .craft-grid-3{grid-template-columns:repeat(3,58px);grid-template-rows:repeat(3,58px)}
+.workbench-layout .craft-output{width:66px;height:66px}
+.recipe-book{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.recipe-note{display:flex;align-items:center;gap:9px;min-width:0;border:1px solid #ffffff15;background:#202a35;border-radius:7px;padding:8px}
+.recipe-note .item-icon{width:27px;height:27px;flex:none}
+.recipe-note strong,.recipe-note small{display:block}
+.recipe-note strong{font-size:10px}
+.recipe-note small{font-size:9px;color:#aebbc7;margin-top:3px}
+@media(max-width:980px){
+ #inventory-layout{grid-template-columns:160px minmax(280px,1fr)}
+ .inventory-crafting-column{grid-column:1/-1}
+ .inventory-crafting-column .section-box{max-width:520px;margin:0 auto 10px}
+ .workbench-ready{grid-template-columns:1fr}
+}
+@media(max-width:650px){
+ #inventory-overlay{padding:5px}
+ #inventory-overlay .inventory-panel{width:100%;max-height:96vh;padding:10px}
+ #inventory-layout{grid-template-columns:1fr;gap:8px}
+ .inventory-character-column{display:grid;grid-template-columns:140px 1fr;gap:7px}
+ #player-preview{min-height:154px}
+ #player-preview svg{height:120px;width:110px}
+ .inventory-character-column .section-box{margin:0}
+ .inventory-storage-column .section-box{padding:7px}
+ #inventory-grid,#inventory-hotbar-grid{gap:3px}
+ #inventory-grid .inv-slot,#inventory-hotbar-grid .inv-slot{min-height:28px}
+ .craft-grid-2{grid-template-columns:repeat(2,43px);grid-template-rows:repeat(2,43px)}
+ .craft-grid-3{grid-template-columns:repeat(3,41px);grid-template-rows:repeat(3,41px)}
+ .craft-output{width:49px;height:49px}
+ .workbench-layout .craft-grid-3{grid-template-columns:repeat(3,47px);grid-template-rows:repeat(3,47px)}
+ .workbench-layout .craft-output{width:55px;height:55px}
+ .workbench-layout{gap:12px;margin-left:0}
+ .recipe-book{grid-template-columns:1fr 1fr}
+}
