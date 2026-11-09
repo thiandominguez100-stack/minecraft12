@@ -142,11 +142,32 @@ export class VoxelWorld{
     return 2;
   }
   collides(pos,r=.29,height=1.8){
-    const feet=pos.y-1.62,lo=Math.floor(feet+.08+.5),hi=Math.floor(feet+height-.08+.5);
-    for(const x of [pos.x-r,pos.x+r])for(const z of [pos.z-r,pos.z+r])for(let y=lo;y<=hi;y++){
-      if(this.isSolid(Math.floor(x+.5),y,Math.floor(z+.5)))return true;
+    const epsilon=1e-5,feet=pos.y-1.62,head=feet+height;
+    const minX=Math.floor(pos.x-r+.5+epsilon),maxX=Math.floor(pos.x+r+.5-epsilon);
+    const minY=Math.floor(feet+.5+epsilon),maxY=Math.floor(head+.5-epsilon);
+    const minZ=Math.floor(pos.z-r+.5+epsilon),maxZ=Math.floor(pos.z+r+.5-epsilon);
+    for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)for(let z=minZ;z<=maxZ;z++){
+      if(this.isSolid(x,y,z))return true;
     }
     return false;
+  }
+  findGroundSurface(pos,r=.29,maxGap=.12,maxPenetration=.12){
+    const feet=pos.y-1.62;
+    const samples=[[0,0,true],[-r*.8,-r*.8,false],[r*.8,-r*.8,false],[-r*.8,r*.8,false],[r*.8,r*.8,false]];
+    const counts=new Map(),firstY=Math.floor(feet+.5);
+    for(const [dx,dz,isCenter] of samples){
+      const bx=Math.floor(pos.x+dx+.5),bz=Math.floor(pos.z+dz+.5);
+      for(let by=firstY;by>=firstY-2;by--){
+        if(!this.isSolid(bx,by,bz))continue;
+        const top=by+.5,gap=feet-top;
+        if(gap>=-maxPenetration&&gap<=maxGap){
+          const key=String(top),entry=counts.get(key)||{top,count:0,center:false};
+          entry.count++;entry.center=entry.center||isCenter;counts.set(key,entry);break;
+        }
+      }
+    }
+    const best=[...counts.values()].sort((a,b)=>b.count-a.count||b.top-a.top)[0];
+    return best&&(best.count>=3||(best.center&&best.count>=2))?best.top:null;
   }
   rebuild(){
     this.group.clear();
