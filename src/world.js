@@ -13,7 +13,7 @@ const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z);
 
 function makeWaterTexture(){
  const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;const ctx=canvas.getContext("2d",{alpha:false});
- for(let y=0;y<128;y++)for(let x=0;x<128;x++){const grain=hash(x,y,719),wave=Math.sin(x*.09+y*.045)*.018+Math.cos(y*.08-x*.035)*.014;const c=new THREE.Color(0x468fb8).multiplyScalar(.96+wave+(grain-.5)*.055);if(grain>.985)c.lerp(new THREE.Color(0xa9d9ec),.10);ctx.fillStyle="#"+c.getHexString();ctx.fillRect(x,y,1,1);}
+ for(let y=0;y<128;y++)for(let x=0;x<128;x++){const grain=hash(x,y,719),wave=Math.sin(x*.09+y*.045)*.018+Math.cos(y*.08-x*.035)*.014;const c=new THREE.Color(0x176fae).multiplyScalar(.94+wave*2.1+(grain-.5)*.09);if(grain>.975)c.lerp(new THREE.Color(0xc8f1ff),.22);ctx.fillStyle="#"+c.getHexString();ctx.fillRect(x,y,1,1);}
  const t=new THREE.CanvasTexture(canvas);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.colorSpace=THREE.SRGBColorSpace;t.generateMipmaps=true;t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;return t;
 }
 
@@ -36,7 +36,7 @@ export class VoxelWorld{
       this.materials.set(def.id,materials);
     }
     const waterTexture=makeWaterTexture();
-    this.waterMaterial=new THREE.MeshPhongMaterial({map:waterTexture,color:0xffffff,transparent:true,opacity:.80,depthWrite:false,side:THREE.DoubleSide,vertexColors:true,shininess:88,specular:0xa9dcf4,flatShading:false});
+    this.waterMaterial=new THREE.MeshPhongMaterial({map:waterTexture,color:0xffffff,transparent:true,opacity:.94,depthWrite:true,depthTest:true,side:THREE.DoubleSide,vertexColors:true,shininess:105,specular:0xd2f3ff,flatShading:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-1});
     this.waterShader=null;
     this.waterMaterial.onBeforeCompile=(shader)=>{
       shader.uniforms.uWaterTime={value:0};
@@ -319,7 +319,7 @@ export class VoxelWorld{
         geometry.computeVertexNormals();geometry.computeBoundingSphere();
         const waterMesh=new THREE.Mesh(geometry,this.waterMaterial);
         waterMesh.userData={blockId:"water",dynamicWater:true,topFaces:surface.topFaces,sideFaces:surface.sideFaces};
-        waterMesh.renderOrder=2;chunkGroup.add(waterMesh);
+        waterMesh.renderOrder=4;waterMesh.frustumCulled=false;waterMesh.userData.waterCellCount=waterCoords.length;chunkGroup.add(waterMesh);
       }
     }
     this.chunkGroupVisibility(chunkGroup,ix,iz);
