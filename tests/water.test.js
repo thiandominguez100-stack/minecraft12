@@ -184,3 +184,15 @@ test("legacy saves do not restore every natural river cell as an active source",
  fluid.restoreSources([[90,WATER_LEVEL,90]]);
  assert.ok(fluid.exportSources().some(([sx,sy,sz])=>sx===90&&sy===WATER_LEVEL&&sz===90));
 });
+
+test("generated natural water is represented by real water blocks up to the visible waterline",()=>{
+ const world=new FakeWorld();world.seed=20261109;
+ for(let x=-96;x<=96;x++)for(let z=-96;z<=96;z++){
+  const sample=terrainSample(x,z,world.seed);
+  if(!sample.isWaterColumn)continue;
+  const height=sample.height;
+  for(let y=height+1;y<=WATER_LEVEL;y++)world.set(x,y,z,"water");
+ }
+ let count=0;for(const id of world.blocks.values())if(id==="water")count++;
+ assert.ok(count>1000,"the generated basin should contain visible water cells");
+});
