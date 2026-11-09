@@ -6,6 +6,7 @@ import {FirstPersonPhysics} from "./physics.js";
 import {WaterSimulation} from "./fluid.js";
 import {Inventory} from "./inventory.js";
 import {ItemDropSystem} from "./drops.js";
+import {matchCraftingRecipe,getCraftingRecipes} from "./crafting.js";
 import {saveGame,loadGame,deleteSave} from "./storage.js";
 
 const $=id=>document.getElementById(id);
@@ -24,7 +25,7 @@ const palm=new THREE.Mesh(new THREE.BoxGeometry(.16,.12,.17),skinMaterial);
 for(let i=0;i<4;i++){const finger=new THREE.Mesh(new THREE.BoxGeometry(.035,.085,.045),skinMaterial);finger.position.set(-.052+i*.035,-.355,.075);armRig.add(finger);}
 const thumb=new THREE.Mesh(new THREE.BoxGeometry(.045,.075,.055),skinMaterial);
 thumb.position.set(-.095,-.31,.015);sleeve.position.set(0,-.035,0);palm.position.set(-.005,-.275,.045);armRig.add(sleeve,palm,thumb);
-armRig.traverse(object=>{if(!object.isMesh)return;object.renderOrder=20;object.frustumCulled=false;object.material.depthTest=false;object.material.depthWrite=false;object.material.transparent=false;object.material.needsUpdate=true;});
+armRig.traverse(object=>{if(!object.isMesh)return;object.renderOrder=100;object.frustumCulled=false;object.material.depthTest=false;object.material.depthWrite=false;object.material.transparent=false;object.material.needsUpdate=true;});
 armRig.visible=false;
 const skyLight=new THREE.HemisphereLight(0xd9efff,0x66704c,1.7);scene.add(skyLight);
 const sun=new THREE.DirectionalLight(0xffefca,2.1);sun.position.set(-28,42,18);scene.add(sun);
@@ -32,6 +33,8 @@ let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival"),flu
 let mobs=new MobSystem(scene,world,world.seed);
 camera.position.set(31,13,31);camera.lookAt(0,4,0);
 let mode="survival",started=false,locked=false,uiOpen=false,dayTime=.25,weather="clear",health=20,hunger=20,selectedTab="items";
+let personalCraftGrid=Array(4).fill(null),workbenchCraftGrid=Array(9).fill(null);
+let craftingStationOpen=false,activeCraftCell=null;
 let yaw=0,pitch=0,velocity=new THREE.Vector3();
 const physics=new FirstPersonPhysics();
 const keys={},ray=new THREE.Raycaster();ray.far=6;
@@ -189,11 +192,13 @@ function editBlock(x,y,z,id){
 }
 function canPlaceAt(x,y,z){const id=world.get(x,y,z);if(id&&id!=="water")return false;const p=camera.position;if(Math.abs(p.x-x)<.8&&Math.abs(p.z-z)<.8&&p.y-1.62<y+.9&&p.y+.15>y-.5)return false;return true}
 function useSelected(){
+ const target=currentTarget(),targetBlock=target&&world.resolveHit(target);
+ if(targetBlock?.id==="crafting_table"){openInventory("table");return}
  const stack=inventory.selectedStack;if(!stack)return;
  const def=ITEM_MAP[stack.id];
  if(def?.food){if(mode==="survival"&&hunger>=20){notify("No tienes hambre.");return}if(mode!=="creative")inventory.consumeSelected();hunger=clamp(hunger+def.food*2,0,20);renderHotbar();updateVitals();notify("Has comido "+def.name+".");return}
  const block=BLOCK_MAP[stack.id];if(!block)return;
- const hit=targetHit||currentTarget();if(!hit)return;
+ const hit=target||targetHit;if(!hit)return;
  const b=world.resolveHit(hit);if(!b)return;
  const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);const x=b.x+Math.round(normal.x),y=b.y+Math.round(normal.y),z=b.z+Math.round(normal.z);
  if(!canPlaceAt(x,y,z))return;
@@ -240,18 +245,132 @@ function updateSky(){
  $("time-label").textContent="Día · "+String(hour).padStart(2,"0")+":"+String(mins).padStart(2,"0")+" · "+(weather==="rain"?"Lluvia":"Despejado");
 }
 function setWeather(value){weather=value==="rain"?"rain":"clear";rain.visible=weather==="rain";updateSky();notify(weather==="rain"?"Comenzó a llover.":"El clima está despejado.")}
+function activeCraftGrid(station){
+ return station==="table"?workbenchCraftGrid:personalCraftGrid;
+}
+function craftRecipe(station){
+ const grid=activeCraftGrid(station),size=station==="table"?3:2;
+ return matchCraftingRecipe(grid.map(cell=>cell?.id||null),size,station);
+}
+function renderCraftGrid(station,elementId){
+ const el=$(elementId);if(!el)return;
+ const grid=activeCraftGrid(station);el.innerHTML="";
+ grid.forEach((cell,index)=>{
+  const slot=document.createElement("button");
+  slot.type="button";slot.className="craft-slot"+(activeCraftCell?.station===station&&activeCraftCell.index===index?" active":"")+(cell?" filled":"");
+  slot.setAttribute("aria-label",station==="table"?"Hueco de mesa "+(index+1):"Hueco personal "+(index+1));
+  slot.innerHTML=cell?itemIcon(cell.id):'<span class="craft-plus">+</span>';
+  if(cell)slot.title=(ITEM_MAP[cell.id]?.name||cell.id)+" · Pulsa para devolver";
+  else slot.title="Seleccionar hueco y después pulsar un material";
+  slot.onclick=()=>handleCraftCellClick(station,index);
+  el.append(slot);
+ });
+}
+function renderCraftOutput(station){
+ const output=$(station==="table"?"workbench-craft-output":"personal-craft-output");
+ const result=$(station==="table"?"workbench-craft-result":"personal-craft-result");
+ if(!output||!result)return;
+ const recipe=craftRecipe(station);
+ output.innerHTML=recipe?itemIcon(recipe.output.id)+'<span class="craft-output-count">×'+recipe.output.count+'</span>':'<span class="craft-output-empty">?</span>';
+ output.disabled=!recipe||!inventory.canFit(recipe.output.id,recipe.output.count)||(station==="table"&&!craftingStationOpen);
+ output.title=recipe?(ITEM_MAP[recipe.output.id]?.name||recipe.output.id)+" ×"+recipe.output.count:"Combinación sin receta";
+ result.textContent=recipe?recipe.name+" · "+(ITEM_MAP[recipe.output.id]?.name||recipe.output.id)+" ×"+recipe.output.count:(station==="table"&&!craftingStationOpen?"Coloca una mesa de trabajo para activar esta cuadrícula.":"Coloca los materiales en el patrón correcto.");
+ output.onclick=()=>craftFromGrid(station);
+}
+function renderCraftingUI(){
+ renderCraftGrid("personal","personal-craft-grid");
+ renderCraftGrid("table","workbench-craft-grid");
+ $("workbench-locked").classList.toggle("hidden",craftingStationOpen);
+ $("workbench-ready").classList.toggle("hidden",!craftingStationOpen);
+ renderCraftOutput("personal");renderCraftOutput("table");
+}
+function renderInventorySlot(index,label){
+ const stack=inventory.slots[index],el=document.createElement("div");
+ el.className="inv-slot"+(index===inventory.selected?" selected":"");
+ el.innerHTML=(label?'<span class="number">'+label+'</span>':"")+(stack?itemIcon(stack.id):"")+(stack?'<span class="stack">'+(mode==="creative"?"∞":stack.count)+'</span>':"");
+ el.title=stack?(ITEM_MAP[stack.id]?.name||stack.id)+" ×"+stack.count:"Espacio vacío";
+ el.onclick=()=>handleInventorySlotClick(index);
+ return el;
+}
+function handleInventorySlotClick(index){
+ if(activeCraftCell){
+  const grid=activeCraftGrid(activeCraftCell.station),slot=grid[activeCraftCell.index],stack=inventory.slots[index];
+  if(slot||!stack)return;
+  grid[activeCraftCell.index]={id:stack.id,removed:mode!=="creative"};
+  if(mode!=="creative"){stack.count--;if(stack.count<=0)inventory.slots[index]=null;}
+  activeCraftCell=null;renderHotbar();renderInventory();return;
+ }
+ if(index<9)inventory.selected=index;
+ else if(inventory.slots[index]){
+  const selected=inventory.selected,tmp=inventory.slots[selected];
+  inventory.slots[selected]=inventory.slots[index];inventory.slots[index]=tmp;
+ }
+ renderHotbar();renderInventory();
+}
+function handleCraftCellClick(station,index){
+ if(station==="table"&&!craftingStationOpen)return;
+ const grid=activeCraftGrid(station),cell=grid[index];
+ if(cell){
+  if(cell.removed){
+   const left=inventory.add(cell.id,1);
+   if(left)drops.spawn(cell.id,[camera.position.x,camera.position.y-.6,camera.position.z],left);
+  }
+  grid[index]=null;
+  activeCraftCell={station,index};
+ }else activeCraftCell={station,index};
+ renderHotbar();renderInventory();
+}
+function craftFromGrid(station){
+ if(station==="table"&&!craftingStationOpen)return;
+ const recipe=craftRecipe(station);
+ if(!recipe){notify("Esa combinación no produce ningún objeto.");return}
+ if(!inventory.canFit(recipe.output.id,recipe.output.count)){notify("No tienes espacio para el resultado.");return}
+ const previousMode=inventory.mode;inventory.mode="survival";
+ const remaining=inventory.add(recipe.output.id,recipe.output.count);
+ inventory.mode=previousMode;
+ if(remaining){notify("No hay espacio suficiente para fabricar.");return}
+ activeCraftGrid(station).fill(null);activeCraftCell=null;
+ renderHotbar();renderInventory();
+ notify("Fabricado: "+recipe.name+".");
+}
+function returnCraftingInputs(){
+ for(const grid of [personalCraftGrid,workbenchCraftGrid]){
+  for(const cell of grid){
+   if(!cell?.removed)continue;
+   const remaining=inventory.add(cell.id,1);
+   if(remaining)drops.spawn(cell.id,[camera.position.x,camera.position.y-.7,camera.position.z],remaining);
+  }
+  grid.fill(null);
+ }
+ activeCraftCell=null;craftingStationOpen=false;
+}
 function renderInventory(){
- const grid=$("inventory-grid");grid.innerHTML="";
- inventory.slots.forEach((s,i)=>{const el=document.createElement("div");el.className="inv-slot"+(i===inventory.selected?" selected":"");el.innerHTML='<span class="number">'+(i<9?i+1:"")+'</span>'+(s?itemIcon(s.id):"")+(s?'<span class="stack">'+(mode==="creative"?"∞":s.count)+'</span>':"");
-  el.title=s?(ITEM_MAP[s.id]?.name||s.id)+" ×"+s.count:"Espacio vacío";
-  el.onclick=()=>{if(i<9)inventory.selected=i;else if(inventory.slots[i]){const tmp=inventory.slots[inventory.selected];inventory.slots[inventory.selected]=inventory.slots[i];inventory.slots[i]=tmp}renderHotbar();renderInventory()};grid.append(el)});
- const s=inventory.selectedStack;$("selected-info").textContent=s?(ITEM_MAP[s.id]?.name||s.id)+" · Cantidad: "+s.count+(s.durability!==undefined?" · Durabilidad: "+s.durability:""):"La ranura seleccionada está vacía.";
+ const mainGrid=$("inventory-grid"),hotbarGrid=$("inventory-hotbar-grid");
+ mainGrid.innerHTML="";hotbarGrid.innerHTML="";
+ for(let i=9;i<36;i++)mainGrid.append(renderInventorySlot(i,""));
+ for(let i=0;i<9;i++)hotbarGrid.append(renderInventorySlot(i,String(i+1)));
+ const stack=inventory.selectedStack;
+ $("selected-info").textContent=stack?(ITEM_MAP[stack.id]?.name||stack.id)+" · Cantidad: "+stack.count+(stack.durability!==undefined?" · Durabilidad: "+stack.durability:""):"La ranura seleccionada está vacía.";
+ renderCraftingUI();
+}
+function renderWorkbenchBook(){
+ const el=$("recipe-list");if(!el)return;el.innerHTML="";
+ for(const recipe of getCraftingRecipes("table")){
+  const row=document.createElement("div");row.className="recipe-note";
+  row.innerHTML=itemIcon(recipe.output.id)+'<span><strong>'+recipe.name+'</strong><small>'+ (ITEM_MAP[recipe.output.id]?.name||recipe.output.id)+' ×'+recipe.output.count+'</small></span>';
+  el.append(row);
+ }
 }
 function showTab(tab){
  selectedTab=tab;document.querySelectorAll("#inventory-tabs .tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
  $("inventory-items").classList.toggle("hidden",tab!=="items");$("inventory-crafting").classList.toggle("hidden",tab!=="crafting");$("inventory-catalog").classList.toggle("hidden",tab!=="catalog");
+ renderCraftingUI();
 }
-function openInventory(){renderInventory();renderCatalog();renderRecipes();setOverlay("inventory-overlay",true);showTab(selectedTab)}
+function openInventory(station="personal"){
+ craftingStationOpen=station==="table";activeCraftCell=null;
+ renderInventory();renderCatalog();renderWorkbenchBook();
+ setOverlay("inventory-overlay",true);showTab(craftingStationOpen?"crafting":"items");
+}
 function renderCatalog(){
  const q=$("catalog-search").value.toLowerCase(),el=$("catalog");el.innerHTML="";
  ITEMS.filter(it=>it.name.toLowerCase().includes(q)||it.id.includes(q)).forEach(it=>{
@@ -297,7 +416,7 @@ function runCommand(raw){
  }
 }
 function togglePause(){if(!started)return;setOverlay("pause-overlay",true)}
-function hideOverlay(id){$(id).style.display="none";uiOpen=["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex")}
+function hideOverlay(id){if(id==="inventory-overlay")returnCraftingInputs();$(id).style.display="none";uiOpen=["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex")}
 renderer.domElement.addEventListener("click",()=>{if(started&&!uiOpen&&!locked)requestLock()});
 renderer.domElement.addEventListener("wheel",e=>{if(!locked)return;inventory.selected=(inventory.selected+(e.deltaY>0?1:8))%9;renderHotbar();renderInventory()},{passive:true});
 renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;brokenThisPress=false;miningProgress=0;miningKey="";if(targetMob)hitMob(targetMob)}if(e.button===2)e.preventDefault()});
@@ -308,7 +427,7 @@ document.addEventListener("mousemove",e=>{if(!locked)return;yaw-=e.movementX*.00
 document.addEventListener("keydown",e=>{
  keys[e.code]=true;
  if(e.code==="Escape"&&started){
-  leftDown=false;
+  leftDown=false;brokenThisPress=false;
   if($("inventory-overlay").style.display==="flex")hideOverlay("inventory-overlay");
   else if($("command-overlay").style.display==="flex")hideOverlay("command-overlay");
   else if($("pause-overlay").style.display==="flex")hideOverlay("pause-overlay");
@@ -334,7 +453,7 @@ $("back-menu").onclick=()=>{save();started=false;hideOverlay("pause-overlay");$(
 $("inventory-tabs").addEventListener("click",e=>{const btn=e.target.closest("[data-tab]");if(btn)showTab(btn.dataset.tab)});
 $("catalog-search").addEventListener("input",renderCatalog);
 $("command-input").addEventListener("keydown",e=>{if(e.key==="Enter"){const raw=e.target.value;e.target.value="";if(raw.trim())runCommand(raw)}});
-window.addEventListener("beforeunload",()=>{if(started)saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources(),drops:drops.serialize()})});
+window.addEventListener("beforeunload",()=>{if(started){returnCraftingInputs();saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources(),drops:drops.serialize()})}});
 $("hud").classList.add("menu-hidden");
 updateVitals();renderHotbar();renderInventory();renderRecipes();renderCatalog();
 if(!loadGame())$("resume-save").disabled=true;
