@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP} from "./data.js";
+import {makeBlockTexture} from "./textures.js";
 import {buildWaterSurface,waterSurfaceY} from "./water-surface.js";
 import {
   CHUNK_SIZE,CHUNKS_X,CHUNKS_Z,TOTAL_CHUNKS,WORLD_MIN_X,WORLD_MIN_Z,
@@ -15,58 +16,6 @@ function makeWaterTexture(){
  const t=new THREE.CanvasTexture(canvas);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.colorSpace=THREE.SRGBColorSpace;t.generateMipmaps=true;t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;return t;
 }
 
-function makeTexture(def,face="side"){
-  const canvas=document.createElement("canvas");canvas.width=16;canvas.height=16;
-  const ctx=canvas.getContext("2d",{alpha:false});
-  const base=new THREE.Color(def.color);
-  for(let y=0;y<16;y++)for(let x=0;x<16;x++){
-    const n=hash(Math.floor(x/2),Math.floor(y/2),def.color+def.id.length*31);
-    let color=base.clone().multiplyScalar(.91+n*.16);
-    if(def.id==="grass"){
-      if(face==="top"){
-        color=new THREE.Color(0x79b94b).multiplyScalar(.88+n*.2);
-        if((x*7+y*11)%37===0)color=new THREE.Color(0x58953c);
-      }else if(face==="bottom")color=new THREE.Color(0x80583d).multiplyScalar(.9+n*.16);
-      else if(y<4)color=new THREE.Color(0x75b64b).multiplyScalar(.9+n*.16);
-      else color=new THREE.Color(0x805d3e).multiplyScalar(.9+n*.17);
-    }
-    if(def.id==="dirt"||def.id==="sand"||def.id==="clay"||def.id==="moss"){
-      if(n>.91)color.multiplyScalar(1.12);
-      if(n<.09)color.multiplyScalar(.88);
-    }
-    if(def.id==="oak_log"){
-      if(face==="top"||face==="bottom"){
-        const d=Math.hypot(x-7.5,y-7.5);
-        color=d<2?new THREE.Color(0x684326):d<4.5?new THREE.Color(0xc69a5e):new THREE.Color(0x916438);
-      }else if(x%5===0||x%7===0)color=new THREE.Color(0x684528);
-      else color=new THREE.Color(0x956b3f).multiplyScalar(.9+n*.16);
-    }
-    if(def.id==="leaves"){
-      color=n>.65?new THREE.Color(0x579343):new THREE.Color(0x3f7837);
-      if((x*13+y*7)%53===0)color=new THREE.Color(0x2d5c2c);
-      if((x+y*3)%17===0)color=new THREE.Color(0x75b84d);
-    }
-    if(def.id==="water"){
-      color=new THREE.Color(0x347eb7).multiplyScalar(.91+n*.14);
-      if(y%5===0)color=new THREE.Color(0x69b4df);
-    }
-    if(def.id==="stone"&&n>.86)color=new THREE.Color(0xa0a3a5);
-    if(def.id==="bedrock"&&n>.7)color=new THREE.Color(0x515253);
-    if(def.id==="snow")color=new THREE.Color(0xe9f2f4).multiplyScalar(.94+n*.08);
-    ctx.fillStyle="#"+color.getHexString();ctx.fillRect(x,y,1,1);
-  }
-  if(def.id==="coal_ore"||def.id==="iron_ore"||def.id==="gold_ore"||def.id==="diamond_ore"){
-    const ore=new THREE.Color(def.accent||0xffffff);
-    for(let i=0;i<14;i++){
-      const x=Math.floor(hash(i,def.color,7)*16),y=Math.floor(hash(i+21,def.color,9)*16);
-      ctx.fillStyle="#"+ore.getHexString();ctx.fillRect(x,y,1+(i%4===0?1:0),1);
-    }
-  }
-  const texture=new THREE.CanvasTexture(canvas);
-  texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestFilter;
-  texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=false;
-  return texture;
-}
 
 export class VoxelWorld{
   constructor(scene,seed=20261109,options={}){
@@ -80,9 +29,9 @@ export class VoxelWorld{
     const faces=["right","left","top","bottom","front","back"];
     for(const def of BLOCKS){
       const materials=faces.map(face=>new THREE.MeshLambertMaterial({
-        map:makeTexture(def,face),transparent:!!def.transparent,
-        opacity:def.id==="water"?.78:def.id==="glass"?.52:def.id==="leaves"?.98:1,
-        depthWrite:def.id!=="water",alphaTest:def.id==="leaves"?.06:0
+        map:makeBlockTexture(def,face),transparent:!!def.transparent,
+        opacity:def.id==="water"?.78:def.id==="glass"?.68:1,
+        depthWrite:def.id!=="water"&&def.id!=="glass",alphaTest:def.id==="leaves"?.24:0
       }));
       this.materials.set(def.id,materials);
     }
@@ -107,7 +56,7 @@ export class VoxelWorld{
 
   generateColumn(x,z){
     const sample=terrainSample(x,z,this.seed);
-    const {height,surface,riverDistance,lakeDistance,secondLakeDistance}=sample;
+    const {height,surface,riverDistance,lakeDistance,secondLakeDistance,thirdLakeDistance}=sample;
     for(let y=-5;y<=height;y++){
       let id;
       if(y===-5)id="bedrock";
@@ -123,7 +72,7 @@ export class VoxelWorld{
       }
       this.putBlock(x,y,z,id);
     }
-    if(riverDistance<1.9||lakeDistance<5.6||secondLakeDistance<4.5){
+    if(riverDistance<1.9||lakeDistance<5.6||secondLakeDistance<4.5||thirdLakeDistance<4.9){
       for(let y=height+1;y<=WATER_LEVEL;y++)this.putBlock(x,y,z,"water");
       if(height<WATER_LEVEL)this.waterSources.add(keyOf(x,WATER_LEVEL,z));
     }
@@ -146,21 +95,39 @@ export class VoxelWorld{
   placeTree(x,z){
     const sample=terrainSample(x,z,this.seed);
     if(!this.isGoodTreeSite(x,z,sample))return;
-    const ground=sample.height,trunkHeight=6+Math.floor(hash(x,z,this.seed+404)*3);
+    const ground=sample.height,trunkHeight=7+Math.floor(hash(x,z,this.seed+404)*4);
     for(let y=1;y<=trunkHeight;y++)this.putBlock(x,ground+y,z,"oak_log");
-    const top=ground+trunkHeight;
-    for(let dy=-2;dy<=2;dy++){
-      const radius=dy===2?1:dy===1?2:dy===0?3:dy===-1?3:2;
-      for(let dx=-radius;dx<=radius;dx++)for(let dz=-radius;dz<=radius;dz++){
-        if(dx*dx+dz*dz>radius*radius+1)continue;
-        if(dx===0&&dz===0&&dy<0)continue;
+    const branchY=ground+trunkHeight-3,directions=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(let i=0;i<directions.length;i++){
+      if(hash(x+i,z-i,this.seed+430)<.28)continue;
+      const [dx,dz]=directions[i];
+      this.putBlock(x+dx,branchY+1,z+dz,"oak_log");
+      this.putBlock(x+dx*2,branchY+2,z+dz*2,"oak_log");
+      this.putBlock(x+dx*2,branchY+3,z+dz*2,"leaves");
+    }
+    const top=ground+trunkHeight,layers=[1.25,2.15,3.05,3.55,3.1,2.25,1.15];
+    for(let layer=0;layer<layers.length;layer++){
+      const dy=layer-3,radius=layers[layer],extent=Math.ceil(radius);
+      for(let dx=-extent;dx<=extent;dx++)for(let dz=-extent;dz<=extent;dz++){
+        const distance=(dx*dx+dz*dz)/(radius*radius),edgeNoise=hash(x+dx,z+dz,this.seed+450+layer)*.18;
+        if(distance>1.03+edgeNoise)continue;
+        if(distance>.72&&hash(x+dx*3,z+dz*5,this.seed+470+layer)>.90)continue;
         const px=x+dx,py=top+dy,pz=z+dz;
+        if(this.blocks.has(keyOf(px,py,pz))&&!(dx===0&&dz===0))continue;
+        if(!(dx===0&&dz===0&&dy<0))this.putBlock(px,py,pz,"leaves");
+      }
+    }
+    const clusters=[[-2,-1,0],[2,-1,1],[0,-1,-2],[0,0,2]];
+    for(let c=0;c<clusters.length;c++){
+      const [ox,oy,oz]=clusters[c],cy=top+oy;
+      for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++)for(let dz=-2;dz<=2;dz++){
+        const distance=dx*dx+dy*dy*1.15+dz*dz;
+        if(distance>5.2+hash(dx+c,dz+dy,this.seed+490)*.8)continue;
+        const px=x+ox+dx,py=cy+dy,pz=z+oz+dz;
         if(!this.blocks.has(keyOf(px,py,pz)))this.putBlock(px,py,pz,"leaves");
       }
     }
-    if(hash(x+5,z-3,this.seed+401)>.48)this.putBlock(x,ground+trunkHeight-1,z+1,"oak_log");
   }
-
   placeBoulder(x,z){
     const sample=terrainSample(x,z,this.seed);
     if(sample.biome!=="mountain"||sample.riverDistance<5)return;
@@ -207,6 +174,7 @@ export class VoxelWorld{
         if(hash(x,z,this.seed+606)>.48)this.placeBoulder(x,z);
     this.placeLandmark(9,-18);
     this.placeLandmark(-43,42);
+    this.placeLandmark(63,-57);
   }
 
   generate(){this.generateTerrain();this.generateFeatures();this.base=new Map(this.blocks);this.rebuild();}
