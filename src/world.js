@@ -107,7 +107,7 @@ export class VoxelWorld{
 
   generateColumn(x,z){
     const sample=terrainSample(x,z,this.seed);
-    const {height,surface,riverDistance,lakeDistance}=sample;
+    const {height,surface,riverDistance,lakeDistance,secondLakeDistance}=sample;
     for(let y=-5;y<=height;y++){
       let id;
       if(y===-5)id="bedrock";
@@ -123,7 +123,7 @@ export class VoxelWorld{
       }
       this.putBlock(x,y,z,id);
     }
-    if(riverDistance<1.9||lakeDistance<5.6){
+    if(riverDistance<1.9||lakeDistance<5.6||secondLakeDistance<4.5){
       for(let y=height+1;y<=WATER_LEVEL;y++)this.putBlock(x,y,z,"water");
       if(height<WATER_LEVEL)this.waterSources.add(keyOf(x,WATER_LEVEL,z));
     }

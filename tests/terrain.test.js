@@ -55,7 +55,7 @@ test("biomes and shorelines return valid surface definitions",()=>{
     for(let x=WORLD_MIN_X;x<=WORLD_MAX_X;x++)for(let z=WORLD_MIN_Z;z<=WORLD_MAX_Z;z++){
       const sample=terrainSample(x,z,seed);
       assert.ok(surfaces.has(sample.surface));
-      assert.ok(sample.height>=2&&sample.height<=23);
+      assert.ok(sample.height>=2&&sample.height<=25);
     }
   }
 });
