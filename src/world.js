@@ -24,7 +24,7 @@ export class VoxelWorld{
   constructor(scene,seed=20261109){
     this.scene=scene;this.seed=seed;this.blocks=new Map();this.base=new Map();this.changes=new Map();this.group=new THREE.Group();scene.add(this.group);
     this.geometry=new THREE.BoxGeometry(1,1,1);this.materials=new Map();
-    for(const d of BLOCKS)this.materials.set(d.id,new THREE.MeshLambertMaterial({map:makeTexture(d),transparent:!!d.transparent,opacity:d.id==="water"?.72:d.id==="glass"?.48:1,depthWrite:d.id!=="water"}));
+    for(const d of BLOCKS)this.materials.set(d.id,new THREE.MeshLambertMaterial({map:makeTexture(d),transparent:!!d.transparent,opacity:d.id==="water"?.72:d.id==="glass"?.48:d.id==="leaves"?.96:1,depthWrite:d.id!=="water"}));
     this.generate();
     this.base=new Map(this.blocks);this.rebuild();
   }
@@ -51,13 +51,13 @@ export class VoxelWorld{
     for(let x=-22;x<=22;x++)for(let z=-22;z<=22;z++)put(x,-4,z,"bedrock");
   }
   get(x,y,z){return this.blocks.get(k(Math.round(x),Math.round(y),Math.round(z)))||null}
-  set(x,y,z,id){
+  set(x,y,z,id,rebuildNow=true){
     x=Math.round(x);y=Math.round(y);z=Math.round(z);const key=k(x,y,z);
     if(id&&!BLOCK_MAP[id])return false;
     if(id)this.blocks.set(key,id);else this.blocks.delete(key);
     const base=this.base.get(key)||null,now=id||null;
     if(base===now)this.changes.delete(key);else this.changes.set(key,now);
-    this.rebuild();return true;
+    if(rebuildNow)this.rebuild();return true;
   }
   isSolid(x,y,z){const id=this.get(x,y,z);if(!id)return false;return BLOCK_MAP[id]?.solid!==false&&id!=="water"&&id!=="leaves"&&id!=="torch"}
   highest(x,z){for(let y=24;y>=-4;y--){const id=this.get(x,y,z);if(id&&this.isSolid(x,y,z))return y}return 2}
@@ -67,7 +67,7 @@ export class VoxelWorld{
     return false;
   }
   rebuild(){
-    while(this.group.children.length){const child=this.group.children.pop();this.group.remove(child)}
+    this.group.clear()
     const grouped=new Map();for(const [key,id] of this.blocks){if(!grouped.has(id))grouped.set(id,[]);grouped.get(id).push(key.split(",").map(Number))}
     for(const [id,coords] of grouped){
       const mesh=new THREE.InstancedMesh(this.geometry,this.materials.get(id),coords.length);
