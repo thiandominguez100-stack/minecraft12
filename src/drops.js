@@ -32,7 +32,7 @@ export class ItemDropSystem{
    const dx=player.x-p.x,dy=(player.y-.82)-p.y,dz=player.z-p.z,dist=Math.hypot(dx,dy,dz);
    if(dist<2.7&&dist>.001){const force=dist<1.25?8:3.6;v.x+=dx/dist*force*dt;v.y+=dy/dist*force*dt;v.z+=dz/dist*force*dt;}
    if(dist<1.25){const remaining=inventory.add(d.id,d.count),picked=d.count-remaining;if(picked){d.count=remaining;changed=true;}if(d.count<=0){this.removeAt(i);continue;}}
-   d.mesh.rotation.y+=dt*1.35;d.group.rotation.y=Math.sin(d.age*1.7+d.phase)*.14;d.group.position.y+=Math.sin(d.age*3.1+d.phase)*.006;
+   d.mesh.rotation.y+=dt*1.35;d.mesh.position.y=Math.sin(d.age*3.1+d.phase)*.035;d.group.rotation.y=Math.sin(d.age*1.7+d.phase)*.14;
   }
   if(changed)onPickup();
  }
