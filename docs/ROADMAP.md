@@ -26,7 +26,8 @@ Implemented:
 ## Next milestones
 
 ### Alpha 0.5 — world and block systems
-- Chunk-based terrain generation and mesh rebuilding.
+- Stream additional 16×16 chunks beyond the current prebuilt 4 × 3 world grid.
+- Greedy meshing and hidden-face removal to reduce geometry and overdraw.
 - More accurate face textures, block states and orientation.
 - Liquid flow, light propagation and block update ticks.
 - More reliable collision, stepping, swimming and fall damage.
