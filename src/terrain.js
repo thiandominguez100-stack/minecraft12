@@ -6,6 +6,14 @@ const lerp=(a,b,t)=>a+(b-a)*t,smooth=t=>t*t*(3-2*t);
 export function valueNoise(x,z,scale,seed){const gx=x/scale,gz=z/scale,x0=Math.floor(gx),z0=Math.floor(gz),tx=smooth(gx-x0),tz=smooth(gz-z0);return lerp(lerp(hash(x0,z0,seed),hash(x0+1,z0,seed),tx),lerp(hash(x0,z0+1,seed),hash(x0+1,z0+1,seed),tx),tz);}
 export function mountainCenter(seed){return {x:-21+hash(seed,13,42)*9,z:-12+hash(seed,17,8)*15};}
 export function riverCenterAt(x,seed){const shift=hash(seed,91,31)*60;return 10+Math.sin((x+shift)*.09)*4.2+Math.sin((x+shift*.37)*.21)*1.4;}
+export function waterBankHeight(distance,baseHeight,coreRadius,fadeRadius,depth=2.6,edgeHeight=4.55){
+ const d=Math.max(0,Number(distance)||0),base=Math.max(0,Number(baseHeight)||0);
+ if(d>=fadeRadius)return base;
+ const t=Math.max(0,Math.min(1,d/coreRadius));
+ const f=Math.max(0,Math.min(1,(d-coreRadius)/(fadeRadius-coreRadius)));
+ const target=d<=coreRadius?depth+(edgeHeight-depth)*smooth(t):edgeHeight+(base-edgeHeight)*smooth(f);
+ return Math.round(Math.min(base,target));
+}
 export function terrainSample(x,z,seed){
  const n1=(valueNoise(x,z,31,seed)-.5)*6.2,n2=(valueNoise(x,z,13,seed+11)-.5)*2,c=mountainCenter(seed);
  const d1=Math.hypot(x-c.x,(z-c.z)*.88),m1=Math.pow(Math.max(0,1-d1/25),1.55)*15;
@@ -16,12 +24,13 @@ export function terrainSample(x,z,seed){
  const riverDistance=Math.abs(z-riverCenterAt(x,seed));
  const lc1={x:17+hash(seed,21,5)*3,z:-14+hash(seed,28,6)*4};
  const lakeDistance=Math.hypot(x-lc1.x,z-lc1.z),secondLakeDistance=Math.hypot(x+43,z-43),thirdLakeDistance=Math.hypot(x-65,z+53);
- const rt=Math.min(1,riverDistance/15),ri=1-rt*rt*(3-2*rt);let height=Math.round(baseHeight*(1-ri)+(2.5+riverDistance*.18)*ri);
- const lt=Math.min(1,lakeDistance/12),li=1-lt*lt*(3-2*lt);height=Math.round(height*(1-li)+(2.5+lakeDistance*.22)*li);
- const slt=Math.min(1,secondLakeDistance/10),sli=1-slt*slt*(3-2*slt);height=Math.round(height*(1-sli)+(2.8+secondLakeDistance*.18)*sli);
- const tlt=Math.min(1,thirdLakeDistance/11),tli=1-tlt*tlt*(3-2*tlt);height=Math.round(height*(1-tli)+(2.6+thirdLakeDistance*.19)*tli);
+ let height=baseHeight;
+ height=Math.min(height,waterBankHeight(riverDistance,baseHeight,2.8,15,2.6,4.55));
+ height=Math.min(height,waterBankHeight(lakeDistance,baseHeight,5.7,12,2.5,4.55));
+ height=Math.min(height,waterBankHeight(secondLakeDistance,baseHeight,5.0,11,2.6,4.55));
+ height=Math.min(height,waterBankHeight(thirdLakeDistance,baseHeight,5.4,12,2.5,4.55));
  let biome="meadow";if(desert)biome="desert";else if(baseHeight>=13)biome="mountain";else if(valueNoise(x,z,16,seed+81)>.57)biome="forest";
- let surface="grass";if(desert||riverDistance<4.6||lakeDistance<6.5||secondLakeDistance<5.8||thirdLakeDistance<6.2)surface="sand";
+ let surface="grass";if(desert||riverDistance<5.8||lakeDistance<8.0||secondLakeDistance<7.4||thirdLakeDistance<7.8)surface="sand";
  if(baseHeight>=19&&!desert&&riverDistance>4.8)surface="snow";else if(baseHeight>=14&&!desert&&riverDistance>4.8)surface="stone";
  return {height,baseHeight,biome,surface,riverDistance,lakeDistance,secondLakeDistance,thirdLakeDistance,riverCenter:riverCenterAt(x,seed)};
 }
