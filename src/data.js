@@ -1,5 +1,5 @@
 export const BLOCKS = [
-  {id:"grass",name:"Césped",group:"Naturaleza",color:0x6b9f43,hardness:.6,drop:"dirt",top:0x79b84b,side:0x78934c},
+  {id:"grass",name:"Césped",group:"Naturaleza",color:0x6b9f43,hardness:.6,drop:"grass",top:0x79b84b,side:0x78934c},
   {id:"dirt",name:"Tierra",group:"Naturaleza",color:0x8a6244,hardness:.5,drop:"dirt"},
   {id:"stone",name:"Piedra",group:"Naturaleza",color:0x85898c,hardness:1.5,drop:"cobblestone",tool:"pickaxe"},
   {id:"cobblestone",name:"Roca",group:"Construcción",color:0x696d70,hardness:2,drop:"cobblestone",tool:"pickaxe"},

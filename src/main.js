@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP,ITEMS,ITEM_MAP,RECIPES,clamp,resolveBlockDrop} from "./data.js";
 import {VoxelWorld} from "./world.js";
-import {MobSystem} from "./mobs.js";
 import {FirstPersonPhysics} from "./physics.js";
 import {WaterSimulation} from "./fluid.js";
 import {Inventory} from "./inventory.js";
@@ -19,7 +18,7 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8bc7e7);
 scene.fog=new THREE.Fog(0x8bc7e7,68,138);
 const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,260);
-const playerPosition=new THREE.Vector3(31,13,31);
+const playerPosition=new THREE.Vector3(0,2.12,0);
 scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
 const maxPixelRatio=Math.min(devicePixelRatio||1,1.0);let adaptivePixelRatio=maxPixelRatio,adaptiveRenderDistance=5.8;
@@ -76,7 +75,6 @@ function applyCameraView(){
 }
 
 let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival"),fluid=new WaterSimulation(world),drops=new ItemDropSystem(scene,world);
-let mobs=new MobSystem(scene,world,world.seed);
 const atmosphere=createAtmosphere(THREE,scene,world.seed);
 camera.position.copy(playerPosition);camera.lookAt(0,4,0);
 let mode="survival",started=false,locked=false,uiOpen=false,dayTime=.25,weather="clear",health=20,hunger=20,selectedTab="items",viewMode=0;
@@ -85,9 +83,9 @@ let craftingStationOpen=false,activeCraftCell=null;
 let yaw=0,pitch=0,velocity=new THREE.Vector3();
 const physics=new FirstPersonPhysics();
 const keys={},ray=new THREE.Raycaster(),cameraCollisionRay=new THREE.Raycaster();ray.far=6;
-let performanceElapsed=0,performanceFrames=0,estimatedFPS=60,mobUpdateElapsed=0;
+let performanceElapsed=0,performanceFrames=0,estimatedFPS=60;
 let leftDown=false,brokenThisPress=false,miningKey="",miningProgress=0,lastSave=0,lastHunger=0,toastTimer=0;
-let targetHit=null,targetMob=null,toastTimerId=0;
+let targetHit=null,toastTimerId=0;
 const rainCount=520,rainPositions=new Float32Array(rainCount*3);
 for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*152;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*152}
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
@@ -132,16 +130,16 @@ function updateLoading(progress,detail){
  $("loading-detail").textContent=detail||"Cargando...";
 }
 async function replaceWorld(seed,changes=[],waterSources=[],savedDrops=[]){
- showLoading("Generando un nuevo mundo");
- if(mobs)mobs.dispose();
- scene.remove(world.group);
+ showLoading("Preparando la pradera infinita");
+ drops.clear();world.dispose();
  world=new VoxelWorld(scene,seed,{defer:true});
  await world.generateAsync(updateLoading);
  if(changes.length)world.importChanges(changes);
  fluid=new WaterSimulation(world);
  if(waterSources.length)fluid.restoreSources(waterSources);
- mobs=new MobSystem(scene,world,seed);
- updateLoading(100,"Mundo listo");
+ drops=new ItemDropSystem(scene,world);
+ if(savedDrops.length)drops.restore(savedDrops);
+ updateLoading(100,"Césped extendido · viento activado");
  await new Promise(resolve=>setTimeout(resolve,220));
  $("loading-screen").style.display="none";
 }
@@ -151,8 +149,8 @@ async function newWorld(nextMode){
  const seed=Math.floor(100000+Math.random()*900000000);
  await replaceWorld(seed);
  inventory=new Inventory(nextMode);setMode(nextMode);
- if(nextMode==="creative"){ITEMS.slice(0,36).forEach((it,i)=>inventory.slots[i]={id:it.id,count:it.kind==="tool"?1:64,...(it.kind==="tool"?{durability:it.durability}:{})})}
- else{inventory.add("apple",2);inventory.add("bread",3)}
+ if(nextMode==="creative"){inventory.slots[0]={id:"grass",count:64};}
+ else{inventory.add("grass",32);inventory.add("apple",2);inventory.add("bread",3);}
  const spawn=findSafeSpawn(world);playerPosition.set(spawn.x,spawn.y,spawn.z);camera.position.copy(playerPosition);camera.rotation.set(0,0,0);yaw=0;pitch=0;viewMode=0;
  velocity.set(0,0,0);physics.reset();physics.onGround=true;health=20;hunger=20;dayTime=.25;weather="clear";started=true;
  $("start-screen").style.display="none";$("hud").classList.remove("menu-hidden");setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Mundo creado · Semilla "+world.seed);save();
@@ -179,20 +177,7 @@ function updateAim(){
  scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
  ray.setFromCamera(new THREE.Vector2(0,0),camera);
  const blocks=ray.intersectObjects(world.getNearbyChunkGroups(playerPosition.x,playerPosition.z,2),true).filter(hit=>hit.object.userData.blockId!=="water"),blockHit=blocks.length?blocks[0]:null;
- const creature=mobs?.pick(ray);
- if(creature&&(!blockHit||creature.distance<blockHit.distance)){targetMob=creature.mob;targetHit=null}
- else{targetMob=null;targetHit=blockHit}
-}
-function hitMob(mob){
- if(!mob)return;
- const direction=new THREE.Vector3(mob.root.position.x-playerPosition.x,0,mob.root.position.z-playerPosition.z);
- const result=mobs.hit(mob,direction);if(!result)return;
- if(result.drop&&mode==="survival"){
-  const rest=inventory.add(result.drop,1);
-  if(rest)notify("Inventario lleno: no se recogió el objeto.");
-  else notify("Criatura derrotada · "+(ITEM_MAP[result.drop]?.name||result.drop)+" recogido.");
- }else notify("Golpe acertado · "+(mob.type==="sheep"?"Oveja":mob.type==="cow"?"Vaca":"Gallina")+" · "+result.hp+"/"+(result.maxHp||0)+" de vida.");
- renderHotbar();renderInventory();
+ targetHit=blockHit;
 }
 function heldItem(){return inventory.selectedStack?ITEM_MAP[inventory.selectedStack.id]:null}
 function editBlock(x,y,z,id){
@@ -229,11 +214,6 @@ function breakBlock(b){
 function mineTarget(dt){
  const label=$("target-label");
  if(brokenThisPress){label.style.opacity="0";return;}
- if(targetMob){
-  const name=targetMob.type==="sheep"?"Oveja":targetMob.type==="cow"?"Vaca":"Gallina";
-  label.textContent=name+" · "+targetMob.hp+"/"+targetMob.maxHp+" ♥";
-  label.style.opacity="1";miningKey="";miningProgress=0;return;
- }
  const hit=targetHit,b=hit?world.resolveHit(hit):null;
  if(!b){label.style.opacity="0";miningKey="";miningProgress=0;return}
  const def=BLOCK_MAP[b.id];label.textContent=(def?.name||b.id)+(mode==="survival"?" · "+Math.round(miningProgress*100)+"%":"");label.style.opacity="1";
@@ -423,7 +403,7 @@ function togglePause(){if(!started)return;setOverlay("pause-overlay",true)}
 function hideOverlay(id){if(id==="inventory-overlay")returnCraftingInputs();$(id).style.display="none";uiOpen=["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex")}
 renderer.domElement.addEventListener("click",()=>{if(started&&!uiOpen&&!locked)requestLock()});
 renderer.domElement.addEventListener("wheel",e=>{if(!locked)return;inventory.selected=(inventory.selected+(e.deltaY>0?1:8))%9;renderHotbar();renderInventory()},{passive:true});
-renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;brokenThisPress=false;miningProgress=0;miningKey="";if(targetMob)hitMob(targetMob)}if(e.button===2)e.preventDefault()});
+renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;brokenThisPress=false;miningProgress=0;miningKey="";}if(e.button===2)e.preventDefault()});
 renderer.domElement.addEventListener("mouseup",e=>{if(e.button===0){leftDown=false;brokenThisPress=false;miningProgress=0;miningKey="";}if(e.button===2&&locked)useSelected()});
 renderer.domElement.addEventListener("contextmenu",e=>e.preventDefault());
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement});
@@ -466,7 +446,7 @@ if(!loadGame())$("resume-save").disabled=true;
 function tick(now){
  requestAnimationFrame(tick);const dt=Math.min((now-(tick.last||now))/1000,.05);tick.last=now;
  samplePerformance(dt);
- if(started&&!uiOpen&&mobs){mobUpdateElapsed+=dt;if(mobUpdateElapsed>=1/20){mobs.update(mobUpdateElapsed,now/1000,playerPosition,adaptiveRenderDistance*16+8);mobUpdateElapsed=0;}}
+ 
  if(!started){const orbit=now*.000045;camera.position.set(Math.cos(orbit)*33,12+Math.sin(orbit*.7)*1.2,Math.sin(orbit)*33);camera.lookAt(0,4,0);atmosphere.update(camera.position,dayTime,weather,now/1000)}
  armRig.visible=started&&locked&&!uiOpen&&viewMode===0;
  if(armRig.visible){
@@ -475,7 +455,8 @@ function tick(now){
   armRig.rotation.x=leftDown?-.72+Math.sin(now*.018)*.06:stride;
   armRig.rotation.z=moving?Math.cos(now*.009)*.06:0;
  }
- if(started&&!uiOpen){fluid.update(dt);world.updateWaterAnimation(dt);drops.update(dt,playerPosition,inventory,()=>{renderHotbar();renderInventory()})}
+ world.updateStreaming(3);world.updateWind(now/1000,weather);
+ if(started&&!uiOpen){fluid.update(dt);drops.update(dt,playerPosition,inventory,()=>{renderHotbar();renderInventory()})}
  if(started&&locked){
   camera.position.copy(playerPosition);
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0),side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
