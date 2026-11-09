@@ -129,3 +129,13 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Replaced the high-contrast tiled water pattern with a low-contrast seamless texture and animated vertex waves; water gets smooth specular highlights instead of bright block-grid stripes.
 - Added downward swimming force on Shift, while Space remains the upward swim stroke. The first-person arm is smaller, opaque, rendered above translucent water and includes a visible palm and fingers.
 - Added regression coverage for diving, the 64-chunk footprint and water sources refusing to overwrite solid blocks.
+
+## Alpha 0.9.0 — 64×64 block art and expanded world
+
+- Every block face now uses an individually designed 64 × 64 pixel texture, with nearest-pixel sampling and mipmapped distance rendering.
+- Added distinct art treatments for grass tops and soil edges, layered dirt, fractured stone, bevelled cobblestone, bark and growth rings, plank seams and knots, sand ripples, bricks, minerals, bedrock, glass glints, snow, clay, moss, workbench, furnace, chest and torch.
+- Leaf blocks now use alpha-cut foliage pixels, varied greens and natural gaps instead of a solid dark cube texture.
+- Reworked oak trees with higher trunks, visible branching, layered irregular crowns and overlapping leaf clusters.
+- Expanded the world from 100 to 144 chunks (12 × 12), each 16 × 16 blocks, for a 192 × 192 block footprint. Added a third mountain ridge, a third lake and another ruin.
+- Increased animal distribution across the larger world and extended wandering bounds to the new map edges.
+- Increased camera visibility and minimum night ambient lighting so detailed foliage remains readable after sunset.
