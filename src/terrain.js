@@ -25,10 +25,10 @@ export function terrainSample(x,z,seed){
  const lc1={x:17+hash(seed,21,5)*3,z:-14+hash(seed,28,6)*4};
  const lakeDistance=Math.hypot(x-lc1.x,z-lc1.z),secondLakeDistance=Math.hypot(x+43,z-43),thirdLakeDistance=Math.hypot(x-65,z+53);
  let height=baseHeight;
- height=Math.min(height,waterBankHeight(riverDistance,baseHeight,2.8,15,2.6,4.55));
- height=Math.min(height,waterBankHeight(lakeDistance,baseHeight,5.7,12,2.5,4.55));
- height=Math.min(height,waterBankHeight(secondLakeDistance,baseHeight,5.0,11,2.6,4.55));
- height=Math.min(height,waterBankHeight(thirdLakeDistance,baseHeight,5.4,12,2.5,4.55));
+ height=Math.min(height,waterBankHeight(riverDistance,baseHeight,2.8,26,2.6,4.55));
+ height=Math.min(height,waterBankHeight(lakeDistance,baseHeight,5.7,26,2.5,4.55));
+ height=Math.min(height,waterBankHeight(secondLakeDistance,baseHeight,5.0,26,2.6,4.55));
+ height=Math.min(height,waterBankHeight(thirdLakeDistance,baseHeight,5.4,26,2.5,4.55));
  let biome="meadow";if(desert)biome="desert";else if(baseHeight>=13)biome="mountain";else if(valueNoise(x,z,16,seed+81)>.57)biome="forest";
  let surface="grass";if(desert||riverDistance<5.8||lakeDistance<8.0||secondLakeDistance<7.4||thirdLakeDistance<7.8)surface="sand";
  if(baseHeight>=19&&!desert&&riverDistance>4.8)surface="snow";else if(baseHeight>=14&&!desert&&riverDistance>4.8)surface="stone";
