@@ -231,3 +231,7 @@ button,input{font:inherit}button{color:inherit}
 .craft-output .item-icon{width:42px;height:42px}
 .catalog-item .item-icon{width:34px;height:34px}
 .recipe-note .item-icon{width:34px;height:34px}
+
+/* Alpha 1.2 performance monitor */
+#performance-indicator{position:fixed;top:76px;right:16px;z-index:12;padding:6px 9px;border:1px solid #ffffff20;border-radius:7px;background:#111b24b8;color:#d7e2ea;font:600 10px/1.2 system-ui,sans-serif;letter-spacing:.035em;backdrop-filter:blur(7px);pointer-events:none}
+@media(max-width:650px){#performance-indicator{top:68px;right:9px;font-size:9px}}
