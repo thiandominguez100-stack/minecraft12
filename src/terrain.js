@@ -45,9 +45,10 @@ export function terrainSample(x,z,seed){
   const riverDistance=Math.abs(z-riverCenterAt(x,seed));
   const lakeCenter={x:17+hash(seed,21,5)*3,z:-14+hash(seed,28,6)*4};
   const lakeDistance=Math.hypot(x-lakeCenter.x,z-lakeCenter.z);
-  let height=baseHeight;
-  if(riverDistance<4.8)height=Math.min(height,Math.round(2+riverDistance*1.1));
-  if(lakeDistance<5.6)height=Math.min(height,Math.round(2+lakeDistance*.48));
+  const riverT=Math.min(1,riverDistance/14),riverInfluence=1-riverT*riverT*(3-2*riverT);
+  let height=Math.round(baseHeight*(1-riverInfluence)+(2.5+riverDistance*.2)*riverInfluence);
+  const lakeT=Math.min(1,lakeDistance/11),lakeInfluence=1-lakeT*lakeT*(3-2*lakeT);
+  height=Math.round(height*(1-lakeInfluence)+(2.5+lakeDistance*.24)*lakeInfluence);
   let biome="meadow";
   if(desert)biome="desert";
   else if(baseHeight>=13)biome="mountain";
