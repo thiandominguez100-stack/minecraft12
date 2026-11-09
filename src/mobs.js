@@ -56,7 +56,7 @@ function cube(parent,mat,size,position,uvRect=[0,0,1,1]){
 }
 function mergeStaticMeshes(parent){
  const meshes=parent.children.filter(child=>child.isMesh&&!child.isInstancedMesh);
- if(meshes.length<2)return meshes.map(mesh=>mesh.geometry);
+ if(meshes.length<2)return [];
  const grouped=new Map();
  for(const mesh of meshes){
   mesh.updateMatrix();
