@@ -2,8 +2,15 @@ import * as THREE from "three";
 import {WORLD_MIN_X,WORLD_MIN_Z,WORLD_MAX_X,WORLD_MAX_Z,WORLD_WIDTH,WORLD_DEPTH} from "./terrain.js";
 
 const seeded=(n)=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
-function material(color){return new THREE.MeshLambertMaterial({color,flatShading:true});}
+const sharedMaterials=new Map(),atlasTextures=new Map(),cubeGeometries=new Map(),hitboxGeometries=new Map();
+const hitboxMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,colorWrite:false,depthWrite:false});
+function material(color){
+ const key=Number(color).toString(16);
+ if(!sharedMaterials.has(key))sharedMaterials.set(key,new THREE.MeshLambertMaterial({color,flatShading:true}));
+ return sharedMaterials.get(key);
+}
 function creatureAtlas(type){
+  if(atlasTextures.has(type))return new THREE.MeshLambertMaterial({map:atlasTextures.get(type),flatShading:true});
   const canvas=document.createElement("canvas");canvas.width=64;canvas.height=32;
   const ctx=canvas.getContext("2d",{alpha:false});
   const palettes={
@@ -30,13 +37,17 @@ function creatureAtlas(type){
   }
   const texture=new THREE.CanvasTexture(canvas);
   texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestFilter;
-  texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=false;
+  texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=false;atlasTextures.set(type,texture);
   return new THREE.MeshLambertMaterial({map:texture,flatShading:true});
 }
 function cube(parent,mat,size,position,uvRect=[0,0,1,1]){
-  const geometry=new THREE.BoxGeometry(size[0],size[1],size[2]),uv=geometry.attributes.uv;
-  for(let i=0;i<uv.count;i++)uv.setXY(i,uvRect[0]+uv.getX(i)*(uvRect[2]-uvRect[0]),uvRect[1]+uv.getY(i)*(uvRect[3]-uvRect[1]));
-  uv.needsUpdate=true;
+  const geometryKey=[...size,...uvRect].map(v=>Number(v).toFixed(3)).join(":");
+  let geometry=cubeGeometries.get(geometryKey);
+  if(!geometry){
+    geometry=new THREE.BoxGeometry(size[0],size[1],size[2]);const uv=geometry.attributes.uv;
+    for(let i=0;i<uv.count;i++)uv.setXY(i,uvRect[0]+uv.getX(i)*(uvRect[2]-uvRect[0]),uvRect[1]+uv.getY(i)*(uvRect[3]-uvRect[1]));
+    uv.needsUpdate=true;cubeGeometries.set(geometryKey,geometry);
+  }
   const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=false;
   parent.add(mesh);return mesh;
 }
@@ -91,8 +102,9 @@ export class MobSystem{
     if(type==="cow"||type==="sheep"){
       const tail=cube(root,palette.leg,[.09,.42,.09],[0,.88*scale,-.67*scale]);tail.rotation.x=-.35;
     }
-    const hitMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,colorWrite:false,depthWrite:false});
-    const hitbox=new THREE.Mesh(new THREE.BoxGeometry(type==="chicken"?.9:1.05,1.9,type==="chicken"?1:1.2),hitMaterial);
+    const hitSize=type==="chicken"?[.9,1.9,1]:[1.05,1.9,1.2],hitKey=type;
+    if(!hitboxGeometries.has(hitKey))hitboxGeometries.set(hitKey,new THREE.BoxGeometry(...hitSize));
+    const hitbox=new THREE.Mesh(hitboxGeometries.get(hitKey),hitboxMaterial);
     hitbox.position.y=.95;root.add(hitbox);
     const mob={
       type,root,bodyGroup,headPivot,legs,index,atlas,hitbox,
@@ -105,7 +117,7 @@ export class MobSystem{
     hitbox.userData.mob=mob;return mob;
   }
   pick(raycaster){
-    const candidates=this.mobs.filter(m=>m.hp>0).map(m=>m.hitbox);
+    const candidates=this.mobs.filter(m=>m.hp>0&&m.root.visible).map(m=>m.hitbox);
     if(!candidates.length)return null;
     const hits=raycaster.intersectObjects(candidates,false);
     return hits.length?{mob:hits[0].object.userData.mob,distance:hits[0].distance}:null;
@@ -120,16 +132,22 @@ export class MobSystem{
     mob.state="flee";mob.timer=2.5;
     if(mob.hp<=0){
       this.scene.remove(mob.root);
-      mob.root.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(o.material?.map)o.material.map.dispose();if(o.material)o.material.dispose();}});
+      mob.atlas.dispose();
       const index=this.mobs.indexOf(mob);if(index>=0)this.mobs.splice(index,1);
       return {type:mob.type,hp:0,removed:true,drop:mob.drop};
     }
     return {type:mob.type,hp:mob.hp,maxHp:mob.maxHp,removed:false,drop:null};
   }
-  update(dt,time){
-    this.clock=time;
+  update(dt,time,playerPosition=null,visibleDistance=84){
+    this.clock=time;const maxDistanceSq=visibleDistance*visibleDistance;
     for(const mob of [...this.mobs]){
       if(mob.hp<=0)continue;
+      if(playerPosition){
+        const dx=mob.root.position.x-playerPosition.x,dz=mob.root.position.z-playerPosition.z;
+        const distanceSq=dx*dx+dz*dz;
+        mob.root.visible=distanceSq<=maxDistanceSq;
+        if(!mob.root.visible)continue;
+      }
       if(mob.hitFlash>0){mob.hitFlash=Math.max(0,mob.hitFlash-dt);mob.atlas.color.set(mob.hitFlash>0?0xff7777:0xffffff);}
       if(mob.knockback.lengthSq()>.002){
         const push=mob.knockback.clone().multiplyScalar(dt),nx=mob.root.position.x+push.x,nz=mob.root.position.z+push.z;
@@ -147,7 +165,7 @@ export class MobSystem{
           mob.target.set(
             Math.max(WORLD_MIN_X+4,Math.min(WORLD_MAX_X-4,mob.origin.x+Math.cos(angle)*distance)),
             0,
-            Math.max(-22,Math.min(21,mob.origin.z+Math.sin(angle)*distance))
+            Math.max(WORLD_MIN_Z+4,Math.min(WORLD_MAX_Z-4,mob.origin.z+Math.sin(angle)*distance))
           );
           mob.state="walk";mob.timer=3.5;
         }
@@ -171,7 +189,7 @@ export class MobSystem{
     }
   }
   dispose(){
-    for(const mob of this.mobs){this.scene.remove(mob.root);mob.root.traverse(object=>{if(object.isMesh){object.geometry.dispose();if(object.material?.map)object.material.map.dispose();if(object.material)object.material.dispose();}});}
+    for(const mob of this.mobs){this.scene.remove(mob.root);mob.atlas.dispose();}
     this.mobs.length=0;
   }
 }
