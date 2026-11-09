@@ -157,3 +157,12 @@ test("flow mesh rebuilds are spread across updates instead of rebuilding every c
  }
  assert.equal(fluid.pendingChunks.size,0);
 });
+
+test("generated non-source water initializes as supported and settled",()=>{
+ const world=new FakeWorld();makeFloor(world,-2,2);
+ world.set(0,1,0,"water");world.set(0,2,0,"water");
+ const fluid=new WaterSimulation(world,{tickInterval:.1,updateBudget:1});
+ assert.equal(fluid.levels.get(key(0,1,0)).settled,true);
+ assert.equal(fluid.levels.get(key(0,2,0)).settled,true);
+ assert.equal(fluid.levels.get(key(0,2,0)).falling,false);
+});
