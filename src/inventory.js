@@ -6,6 +6,18 @@ export class Inventory{
   setMode(mode){this.mode=mode}
   count(id){return this.slots.reduce((n,s)=>n+(s?.id===id?s.count:0),0)}
   has(ingredients){return Object.entries(ingredients).every(([id,n])=>this.count(id)>=n)}
+  canFit(id,count=1){
+    const def=ITEM_MAP[id];if(!def||count<=0)return false;
+    if(this.mode==="creative")return true;
+    const max=def.stack||64;
+    let free=0;
+    for(const slot of this.slots){
+      if(slot?.id===id)free+=Math.max(0,max-slot.count);
+      else if(!slot)free+=max;
+      if(free>=count)return true;
+    }
+    return false;
+  }
   add(id,count=1,meta={}){
     if(!ITEM_MAP[id]||count<=0)return count;
     if(this.mode==="creative")return 0;
