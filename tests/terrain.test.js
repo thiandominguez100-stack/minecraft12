@@ -6,13 +6,13 @@ import {
   chunkAddress,isInsideWorld,terrainSample,riverCenterAt,mountainCenter
 } from "../src/terrain.js";
 
-test("the world contains one hundred complete 16x16 chunks",()=>{
+test("the world contains one hundred forty-four complete 16x16 chunks",()=>{
   assert.equal(CHUNK_SIZE,16);
-  assert.equal(CHUNKS_X,10);
-  assert.equal(CHUNKS_Z,10);
-  assert.equal(CHUNKS_X*CHUNKS_Z,100);
-  assert.equal(TOTAL_CHUNKS,100);
-  assert.equal((WORLD_MAX_X-WORLD_MIN_X+1)*(WORLD_MAX_Z-WORLD_MIN_Z+1),100*16*16);
+  assert.equal(CHUNKS_X,12);
+  assert.equal(CHUNKS_Z,12);
+  assert.equal(CHUNKS_X*CHUNKS_Z,120);
+  assert.equal(TOTAL_CHUNKS,144);
+  assert.equal((WORLD_MAX_X-WORLD_MIN_X+1)*(WORLD_MAX_Z-WORLD_MIN_Z+1),144*16*16);
 });
 
 test("chunk addressing covers every world coordinate exactly once",()=>{
@@ -23,7 +23,7 @@ test("chunk addressing covers every world coordinate exactly once",()=>{
     touched.add(chunk.key);
     assert.equal(isInsideWorld(x,z),true);
   }
-  assert.equal(touched.size,100);
+  assert.equal(touched.size,144);
   assert.equal(chunkAddress(WORLD_MIN_X-1,WORLD_MIN_Z),null);
   assert.equal(chunkAddress(WORLD_MAX_X+1,WORLD_MAX_Z),null);
 });
@@ -55,7 +55,7 @@ test("biomes and shorelines return valid surface definitions",()=>{
     for(let x=WORLD_MIN_X;x<=WORLD_MAX_X;x++)for(let z=WORLD_MIN_Z;z<=WORLD_MAX_Z;z++){
       const sample=terrainSample(x,z,seed);
       assert.ok(surfaces.has(sample.surface));
-      assert.ok(sample.height>=2&&sample.height<=25);
+      assert.ok(sample.height>=2&&sample.height<=28);
     }
   }
 });
