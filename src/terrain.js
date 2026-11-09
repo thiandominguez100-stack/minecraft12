@@ -25,12 +25,12 @@ export function terrainSample(x,z,seed){
  const lc1={x:17+hash(seed,21,5)*3,z:-14+hash(seed,28,6)*4};
  const lakeDistance=Math.hypot(x-lc1.x,z-lc1.z),secondLakeDistance=Math.hypot(x+43,z-43),thirdLakeDistance=Math.hypot(x-65,z+53);
  let height=baseHeight;
- height=Math.min(height,waterBankHeight(riverDistance,baseHeight,13.5,24,2.2,5.0));
- height=Math.min(height,waterBankHeight(lakeDistance,baseHeight,13.0,22,2.3,5.0));
- height=Math.min(height,waterBankHeight(secondLakeDistance,baseHeight,10.5,20,2.4,5.0));
- height=Math.min(height,waterBankHeight(thirdLakeDistance,baseHeight,11.0,21,2.3,5.0));
+ height=Math.min(height,waterBankHeight(riverDistance,baseHeight,13.5,24,2.2,4.45));
+ height=Math.min(height,waterBankHeight(lakeDistance,baseHeight,13.0,22,2.3,4.45));
+ height=Math.min(height,waterBankHeight(secondLakeDistance,baseHeight,10.5,20,2.4,4.45));
+ height=Math.min(height,waterBankHeight(thirdLakeDistance,baseHeight,11.0,21,2.3,4.45));
  const nearestLake=Math.min(lakeDistance,secondLakeDistance,thirdLakeDistance);
- const isWaterColumn=height<WATER_LEVEL&&(riverDistance<=9.5||nearestLake<=8.8);
+ const isWaterColumn=height<WATER_LEVEL&&(riverDistance<=13.4||nearestLake<=12.8);
  const riverSource=riverDistance<=1.25&&((x+seed)%5===0);
  const lakeSource=nearestLake<=2.8&&hash(x,z,seed+811)>.62;
  let biome="meadow";if(desert)biome="desert";else if(baseHeight>=13)biome="mountain";else if(valueNoise(x,z,16,seed+81)>.57)biome="forest";
