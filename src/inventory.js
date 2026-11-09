@@ -32,7 +32,7 @@ export class Inventory{
     if(recipe.station==="table"&&!this.has({crafting_table:1}))return {ok:false,message:"Necesitas una mesa de trabajo en tu inventario."};
     if(!this.has(recipe.in))return {ok:false,message:"No tienes todos los materiales."};
     if(this.mode!=="creative")for(const [id,n] of Object.entries(recipe.in))this.remove(id,n);
-    for(const [id,n] of Object.entries(recipe.out)){const rest=this.add(id,n);if(rest)this.add(id,rest)}
+    const previousMode=this.mode;this.mode="survival";for(const [id,n] of Object.entries(recipe.out))this.add(id,n);this.mode=previousMode;
     return {ok:true,message:"Fabricado: "+recipe.name};
   }
   serialize(){return this.slots.map(s=>s?{...s}:null)}
