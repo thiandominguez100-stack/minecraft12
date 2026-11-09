@@ -99,6 +99,8 @@ function samplePerformance(dt){
  else if(estimatedFPS>56)adaptivePixelRatio=Math.min(maxPixelRatio,adaptivePixelRatio+.04);
  renderer.setPixelRatio(adaptivePixelRatio);
  adaptiveRenderDistance=estimatedFPS<34?5.0:estimatedFPS<43?5.6:estimatedFPS<52?6.0:6.5;
+ const quality=estimatedFPS<34?"AHORRO":estimatedFPS<45?"RENDIMIENTO":estimatedFPS<55?"EQUILIBRADO":"ALTO";
+ const indicator=$("performance-indicator");if(indicator)indicator.textContent=Math.round(estimatedFPS)+" FPS · "+quality+" · "+adaptiveRenderDistance.toFixed(1)+" chunks";
 }
 function notify(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimerId);toastTimerId=setTimeout(()=>el.classList.remove("show"),2100)}
 function setOverlay(id,show){$(id).style.display=show?"flex":"none";uiOpen=show||["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex");if(show&&document.pointerLockElement)document.exitPointerLock()}
