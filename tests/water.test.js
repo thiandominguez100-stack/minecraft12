@@ -148,6 +148,12 @@ test("flow mesh rebuilds are spread across updates instead of rebuilding every c
  fluid.update(.1);
  assert.ok(world.rebuilt.length<=1);
  assert.ok(fluid.pendingChunks.size>=1);
- for(let i=0;i<12;i++)fluid.update(.01);
+ let flushes=0;
+ while(fluid.pendingChunks.size&&flushes<20){
+  const before=world.rebuilt.length;
+  fluid.flushRebuilds(1);
+  assert.ok(world.rebuilt.length-before<=1);
+  flushes++;
+ }
  assert.equal(fluid.pendingChunks.size,0);
 });
