@@ -11,8 +11,8 @@ import {saveGame,loadGame,deleteSave} from "./storage.js";
 const $=id=>document.getElementById(id);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8bc7e7);
-scene.fog=new THREE.Fog(0x8bc7e7,64,168);
-const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,220);
+scene.fog=new THREE.Fog(0x8bc7e7,78,210);
+const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,260);
 scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
@@ -233,8 +233,8 @@ function mineTarget(dt){
 function updateVitals(){const hearts=Math.round(health/2),food=Math.round(hunger/2);$("health").textContent="♥ ".repeat(hearts)+"♡ ".repeat(10-hearts);$("hunger").textContent="● ".repeat(food)+"○ ".repeat(10-food)}
 function setTime(which){dayTime=which==="night"?.78:.25;updateSky()}
 function updateSky(){
- const angle=dayTime*Math.PI*2,light=Math.max(.08,Math.sin(angle)*.9+.25);
- sun.position.set(Math.cos(angle)*40,Math.sin(angle)*50,18);sun.intensity=light*2.05;skyLight.intensity=.35+light*1.4;
+ const angle=dayTime*Math.PI*2,light=Math.max(.15,Math.sin(angle)*.9+.30);
+ sun.position.set(Math.cos(angle)*40,Math.sin(angle)*50,18);sun.intensity=light*1.95;skyLight.intensity=.58+light*1.28;
  const sky=new THREE.Color().setHSL(.56,.48,.13+light*.43);scene.background=sky;scene.fog.color.copy(sky);
  const shownTime=(dayTime*24+6)%24,hour=Math.floor(shownTime),mins=Math.floor((shownTime-hour)*60);
  $("time-label").textContent="Día · "+String(hour).padStart(2,"0")+":"+String(mins).padStart(2,"0")+" · "+(weather==="rain"?"Lluvia":"Despejado");
