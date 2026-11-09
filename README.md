@@ -20,7 +20,6 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 - A staged loading screen reporting progress across all 12 terrain chunks and their separate meshes.
 - Per-face 16×16 pixel textures with distinct grass, log, foliage and ore details.
 - Per-chunk instanced block batches, with edits rebuilding only the affected chunk.
-- Instanced block rendering for a lower draw-call count.
 - First-person camera with buffered jumping, stable ground detection, AABB collision, gravity substeps, horizontal acceleration and air control.
 - Jump input has no artificial cooldown; a short input buffer prevents presses from being lost just before landing.
 - WASD movement, jumping, basic collision and Creative flight.
@@ -95,6 +94,6 @@ World edits, player position, inventory, game mode, time and weather are stored 
 
 ## Development status
 
-This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass with 64×32 (2,048-pixel) per-species atlases: they do not yet have combat, breeding, drops, sound, collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, infinite chunk streaming beyond the current 12-chunk map, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
+This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass with 64×32 (2,048-pixel) per-species atlases: they do not yet have breeding, sounds, sophisticated collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, infinite chunk streaming beyond the current 12-chunk map, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
 
 The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROADMAP.md).
