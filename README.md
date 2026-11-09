@@ -1,6 +1,6 @@
 # BlockWorld 3D
 
-**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.4.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
+**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.5.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
 
 ## Play with GitHub Pages
 
@@ -91,6 +91,17 @@ World edits, player position, inventory, game mode, time and weather are stored 
 - Added accelerated horizontal movement with ground friction and air control.
 - Animals can now be targeted and hit with left click; they flash, receive knockback, flee and drop an item when defeated.
 - Replaced flat color squares in the hotbar/inventory with generated 16×16 pixel-art icons.
+
+
+## Alpha 0.5.0 — fluid water and swimming
+
+- Replaced the static, breakable water-block behavior with permanent, non-solid fluid sources.
+- Added discrete voxel flow: water falls vertically first, then spreads horizontally with a seven-cell level decay.
+- Fluid updates run in a bounded simulation budget and rebuild only chunks touched by new water.
+- Water is rendered through a dedicated translucent instanced mesh with scrolling pixel texture, rather than the ordinary solid-block batch.
+- Added body-submersion sampling, buoyancy, water drag, horizontal swimming and a Space-key swim stroke.
+- Added an underwater blue camera tint when the player's eyes are below the water surface.
+- Water source coordinates are included in local save data and restored with the world.
 
 ## Development status
 
