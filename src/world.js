@@ -359,7 +359,7 @@ export class VoxelWorld{
   }
   updateWaterAnimation(dt){
     if(!Number.isFinite(dt)||dt<=0)return;this.waterFlowTime+=dt;
-    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.014)%1;this.waterMaterial.map.needsUpdate=true;}
+    if(this.waterMaterial?.map){this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.014)%1;}
   }
   rebuild(){
     this.group.clear();this.chunkGroups.clear();this.buildChunkIndex();
