@@ -1,10 +1,10 @@
 {
   "name": "blockworld-3d",
-  "version": "1.5.3",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check src/mob-rendering.js && node --check src/spawn.js && node --check src/atlas-layout.js && node --check src/atlas-shader.js && node --check src/block-atlas.js && node --check src/mesh-batching.js && node --check src/greedy-meshing.js && node --check src/view-mode.js && node --check src/item-icons.js && node --check src/crafting.js && node --check src/texture-spec.js && node --check src/textures.js && node --check src/drops.js && node --check src/data.js && node --check src/terrain.js && node --check src/fluid.js && node --check src/water-surface.js && node --check src/world.js && node --check src/inventory.js && node --check src/storage.js && node --check src/mobs.js && node --check src/physics.js && node --check src/main.js",
+    "check": "node --check src/atmosphere-state.js && node --check src/sky-visuals.js && node --check src/mob-rendering.js && node --check src/spawn.js && node --check src/atlas-layout.js && node --check src/atlas-shader.js && node --check src/block-atlas.js && node --check src/mesh-batching.js && node --check src/greedy-meshing.js && node --check src/view-mode.js && node --check src/item-icons.js && node --check src/crafting.js && node --check src/texture-spec.js && node --check src/textures.js && node --check src/drops.js && node --check src/data.js && node --check src/terrain.js && node --check src/fluid.js && node --check src/water-surface.js && node --check src/world.js && node --check src/inventory.js && node --check src/storage.js && node --check src/mobs.js && node --check src/physics.js && node --check src/main.js",
     "test": "node --test"
   }
 }

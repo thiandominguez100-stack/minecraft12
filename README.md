@@ -11,6 +11,14 @@
 
 The app loads Three.js from jsDelivr, so the first load requires an internet connection.
 
+## Alpha 1.6.0 — living atmosphere and simulation fixes
+
+- Added a gradient sky dome, moving voxel-cloud formations, sun and moon discs, and a deterministic night star field.
+- Sunrise and sunset now blend through warm twilight; rain darkens the cloud layer and sky.
+- Clouds use one instanced draw call for the entire formation layer.
+- Passive creature simulation is suspended in menus and while overlays pause gameplay.
+- Saved midnight (`00:00`) now round-trips correctly instead of being replaced by the default time.
+
 ## Alpha 1.5.3 — atlas sampling correction\n\n- Replaced fragile texture-sample string substitution with an explicit Three.js `map_fragment` replacement; unknown shader layouts now fail loudly instead of silently sampling the full atlas.\n- Inset each atlas sampling rectangle by half a texel to keep nearest-filtered UVs inside their own 64×64 tile.\n- Added regression tests for shader patching, unexpected shader layouts and atlas tile boundaries.\n\n## Current alpha features
 
 - A prebuilt 64-chunk world: 8 × 8 chunks, each 16 × 16 blocks (128 × 128 block footprint).

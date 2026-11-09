@@ -1,6 +1,14 @@
 # BlockWorld 3D — Technical roadmap
 
-## Current milestone: Alpha 0.4.0 — chunked world and terrain overhaul
+## Current release: Alpha 1.6.0 — living atmosphere and simulation hardening
+
+Implemented in Alpha 1.6.0:
+- Gradient sky, dawn/dusk palette, orbiting sun and moon, night stars and moving voxel clouds.
+- Rain-darkened cloud formations with a single instanced cloud draw call.
+- Simulation pauses creature AI in menus and paused overlays.
+- Midnight save/load normalization preserves a saved time value of exactly zero.
+
+Earlier milestones below are historical implementation notes.
 
 Implemented:
 - A prebuilt 4 × 3 world grid with 12 chunks of 16 × 16 blocks (64 × 48 block area).

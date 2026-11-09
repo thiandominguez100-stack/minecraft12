@@ -11,6 +11,8 @@ import {renderItemIcon} from "./item-icons.js";
 import {nextCameraView,cameraViewLabel} from "./view-mode.js";
 import {findSafeSpawn} from "./spawn.js";
 import {saveGame,loadGame,deleteSave} from "./storage.js";
+import {normalizeDayTime} from "./atmosphere-state.js";
+import {createAtmosphere} from "./sky-visuals.js";
 
 const $=id=>document.getElementById(id);
 const scene=new THREE.Scene();
@@ -75,6 +77,7 @@ function applyCameraView(){
 
 let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival"),fluid=new WaterSimulation(world),drops=new ItemDropSystem(scene,world);
 let mobs=new MobSystem(scene,world,world.seed);
+const atmosphere=createAtmosphere(THREE,scene,world.seed);
 camera.position.copy(playerPosition);camera.lookAt(0,4,0);
 let mode="survival",started=false,locked=false,uiOpen=false,dayTime=.25,weather="clear",health=20,hunger=20,selectedTab="items",viewMode=0;
 let personalCraftGrid=Array(4).fill(null),workbenchCraftGrid=Array(9).fill(null);
@@ -89,6 +92,7 @@ const rainCount=520,rainPositions=new Float32Array(rainCount*3);
 for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*152;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*152}
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
 const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xc9dceb,size:.09,transparent:true,opacity:.56}));rain.visible=false;scene.add(rain);
+atmosphere.update(playerPosition,dayTime,weather,0);
 
 function samplePerformance(dt){
  performanceElapsed+=dt;performanceFrames++;
@@ -162,7 +166,7 @@ async function loadIntoGame(data){
  setMode(data.mode==="creative"?"creative":"survival");
  if(Array.isArray(data.position)&&data.position.length===3)playerPosition.set(...data.position);else{const spawn=findSafeSpawn(world);playerPosition.set(spawn.x,spawn.y,spawn.z);}camera.position.copy(playerPosition);viewMode=Number.isInteger(data.viewMode)?clamp(data.viewMode,0,2):0;
  camera.rotation.set(0,0,0);yaw=0;pitch=0;
- dayTime=Number(data.dayTime)||.25;weather=data.weather||"clear";health=data.health??20;hunger=data.hunger??20;
+ dayTime=normalizeDayTime(data.dayTime);weather=data.weather||"clear";health=data.health??20;hunger=data.hunger??20;
  started=true;$("start-screen").style.display="none";$("hud").classList.remove("menu-hidden");setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Partida cargada correctamente.");requestLock();
 }
 function save(){
@@ -245,11 +249,12 @@ function mineTarget(dt){
 function updateVitals(){const hearts=Math.round(health/2),food=Math.round(hunger/2);$("health").textContent="♥ ".repeat(hearts)+"♡ ".repeat(10-hearts);$("hunger").textContent="● ".repeat(food)+"○ ".repeat(10-food)}
 function setTime(which){dayTime=which==="night"?.78:.25;updateSky()}
 function updateSky(){
- const angle=dayTime*Math.PI*2,light=Math.max(.15,Math.sin(angle)*.9+.30);
- sun.position.set(Math.cos(angle)*40,Math.sin(angle)*50,18);sun.intensity=light*1.95;skyLight.intensity=.58+light*1.28;
- const sky=new THREE.Color().setHSL(.56,.48,.13+light*.43);scene.background=sky;scene.fog.color.copy(sky);
- const shownTime=(dayTime*24+6)%24,hour=Math.floor(shownTime),mins=Math.floor((shownTime-hour)*60);
- $("time-label").textContent="Día · "+String(hour).padStart(2,"0")+":"+String(mins).padStart(2,"0")+" · "+(weather==="rain"?"Lluvia":"Despejado");
+  const state=atmosphere.update(playerPosition,dayTime,weather,performance.now()/1000);
+  sun.position.set(Math.cos(state.angle)*40,Math.sin(state.angle)*50,18);
+  sun.intensity=.12+state.daylight*1.98;skyLight.intensity=.46+state.daylight*1.22;
+  scene.background.copy(state.horizonColor);scene.fog.color.copy(state.horizonColor);
+  const shownTime=(dayTime*24+6)%24,hour=Math.floor(shownTime),mins=Math.floor((shownTime-hour)*60);
+  $("time-label").textContent="Día · "+String(hour).padStart(2,"0")+":"+String(mins).padStart(2,"0")+" · "+(weather==="rain"?"Lluvia":"Despejado");
 }
 function setWeather(value){weather=value==="rain"?"rain":"clear";rain.visible=weather==="rain";updateSky();notify(weather==="rain"?"Comenzó a llover.":"El clima está despejado.")}
 function activeCraftGrid(station){
@@ -461,8 +466,8 @@ if(!loadGame())$("resume-save").disabled=true;
 function tick(now){
  requestAnimationFrame(tick);const dt=Math.min((now-(tick.last||now))/1000,.05);tick.last=now;
  samplePerformance(dt);
- if(mobs){mobUpdateElapsed+=dt;if(mobUpdateElapsed>=1/20){mobs.update(mobUpdateElapsed,now/1000,playerPosition,adaptiveRenderDistance*16+8);mobUpdateElapsed=0;}}
- if(!started){const orbit=now*.000045;camera.position.set(Math.cos(orbit)*33,12+Math.sin(orbit*.7)*1.2,Math.sin(orbit)*33);camera.lookAt(0,4,0)}
+ if(started&&!uiOpen&&mobs){mobUpdateElapsed+=dt;if(mobUpdateElapsed>=1/20){mobs.update(mobUpdateElapsed,now/1000,playerPosition,adaptiveRenderDistance*16+8);mobUpdateElapsed=0;}}
+ if(!started){const orbit=now*.000045;camera.position.set(Math.cos(orbit)*33,12+Math.sin(orbit*.7)*1.2,Math.sin(orbit)*33);camera.lookAt(0,4,0);atmosphere.update(camera.position,dayTime,weather,now/1000)}
  armRig.visible=started&&locked&&!uiOpen&&viewMode===0;
  if(armRig.visible){
   const moving=!!(keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD);
