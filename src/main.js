@@ -72,7 +72,7 @@ async function newWorld(nextMode){
  else{inventory.add("apple",2);inventory.add("bread",3)}
  const h=world.highest(0,0);camera.position.set(0,h+2.12,0);camera.rotation.set(0,0,0);yaw=0;pitch=0;
  velocity.set(0,0,0);health=20;hunger=20;dayTime=.25;weather="clear";started=true;
- $("start-screen").style.display="none";setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Mundo creado · Semilla "+world.seed);save();
+ $("start-screen").style.display="none";$("hud").classList.remove("menu-hidden");setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Mundo creado · Semilla "+world.seed);save();
 }
 async function loadIntoGame(data){
  if(!data){notify("No se encontró una partida guardada.");return}
@@ -83,7 +83,7 @@ async function loadIntoGame(data){
  if(Array.isArray(data.position)&&data.position.length===3)camera.position.set(...data.position);else camera.position.set(0,world.highest(0,0)+2.12,0);
  camera.rotation.set(0,0,0);yaw=0;pitch=0;
  dayTime=Number(data.dayTime)||.25;weather=data.weather||"clear";health=data.health??20;hunger=data.hunger??20;
- started=true;$("start-screen").style.display="none";setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Partida cargada correctamente.");requestLock();
+ started=true;$("start-screen").style.display="none";$("hud").classList.remove("menu-hidden");setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Partida cargada correctamente.");requestLock();
 }
 function save(){
  if(!started)return;
@@ -228,11 +228,12 @@ $("close-inventory").onclick=()=>hideOverlay("inventory-overlay");$("close-comma
 $("resume-game").onclick=()=>hideOverlay("pause-overlay");
 $("save-game").onclick=()=>{save();hideOverlay("pause-overlay")};
 $("open-inventory").onclick=()=>{hideOverlay("pause-overlay");openInventory()};
-$("back-menu").onclick=()=>{save();started=false;hideOverlay("pause-overlay");$("start-screen").style.display="flex"};
+$("back-menu").onclick=()=>{save();started=false;hideOverlay("pause-overlay");$("hud").classList.add("menu-hidden");$("start-screen").style.display="flex"};
 $("inventory-tabs").addEventListener("click",e=>{const btn=e.target.closest("[data-tab]");if(btn)showTab(btn.dataset.tab)});
 $("catalog-search").addEventListener("input",renderCatalog);
 $("command-input").addEventListener("keydown",e=>{if(e.key==="Enter"){const raw=e.target.value;e.target.value="";if(raw.trim())runCommand(raw)}});
 window.addEventListener("beforeunload",()=>{if(started)saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger})});
+$("hud").classList.add("menu-hidden");
 updateVitals();renderHotbar();renderInventory();renderRecipes();renderCatalog();
 if(!loadGame())$("resume-save").disabled=true;
 
