@@ -44,7 +44,7 @@ export class MobSystem{
   spawn(){
     const types=["sheep","sheep","cow","chicken","sheep","cow","chicken"];let placed=0;
     for(let i=0;i<types.length&&placed<types.length;i++){
-      const x=Math.round((seeded(this.seed+i*7)-.5)*30),z=Math.round((seeded(this.seed+i*13+4)-.5)*30);
+      const x=Math.round((seeded(this.seed+i*7)-.5)*54),z=Math.round((seeded(this.seed+i*13+4)-.5)*38);
       const y=this.world.highest(x,z),surface=this.world.get(x,y,z);
       if(!surface||!["grass","sand"].includes(surface)||this.world.get(x,y+1,z))continue;
       const mob=this.create(types[i],x,y+.5,z,i);this.mobs.push(mob);this.scene.add(mob.root);placed++;
