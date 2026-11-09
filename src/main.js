@@ -150,8 +150,9 @@ function save(){
  const ok=saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger});
  if(ok)notify("Mundo guardado en este navegador.");else notify("No se pudo guardar. Comprueba el almacenamiento del navegador.");
 }
-function currentTarget(){ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,false);return hits.length?hits[0]:null}
+function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,false);return hits.length?hits[0]:null}
 function updateAim(){
+ scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
  ray.setFromCamera(new THREE.Vector2(0,0),camera);
  const blocks=ray.intersectObjects(world.group.children,false),blockHit=blocks.length?blocks[0]:null;
  const creature=mobs?.pick(ray);
