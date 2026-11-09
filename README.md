@@ -130,7 +130,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Added downward swimming force on Shift, while Space remains the upward swim stroke. The first-person arm is smaller, opaque, rendered above translucent water and includes a visible palm and fingers.
 - Added regression coverage for diving, the 64-chunk footprint and water sources refusing to overwrite solid blocks.
 
-## Alpha 1.1.0 — 64×64 block art and expanded world
+## Alpha 1.2.0 — 64×64 block art and expanded world
 
 - Every block face now uses an individually designed 64 × 64 pixel texture, with nearest-pixel sampling and mipmapped distance rendering.
 - Added distinct art treatments for grass tops and soil edges, layered dirt, fractured stone, bevelled cobblestone, bark and growth rings, plank seams and knots, sand ripples, bricks, minerals, bedrock, glass glints, snow, clay, moss, workbench, furnace, chest and torch.
@@ -140,7 +140,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Increased animal distribution across the larger world and extended wandering bounds to the new map edges.
 - Increased camera visibility and minimum night ambient lighting so detailed foliage remains readable after sunset.
 
-## Alpha 1.1.0 — first-person foliage occlusion and Minecraft-style crafting
+## Alpha 1.2.0 — first-person foliage occlusion and Minecraft-style crafting
 
 - Leaf blocks now render as opaque alpha-cut materials (alpha test 0.42, depth writing enabled) instead of late transparent objects. Their transparent texture holes stay open, while visible leaves depth-occlude correctly and no longer draw over the first-person hand.
 - First-person arm render order is raised above world geometry to keep the held arm clearly visible.
@@ -150,7 +150,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Craft ingredients are moved out of inventory into grid cells, consumed when crafting, and safely returned when closing the screen. Output space is checked before consuming a recipe.
 - Added 2 × 2/3 × 3 recipe matching and inventory-capacity regression tests.
 
-## Alpha 1.1.0 — stable shorelines, item sprites and third-person cameras
+## Alpha 1.2.0 — stable shorelines, item sprites and third-person cameras
 
 - River and lake beds now use a shallow shoreline profile: water depth falls toward the bank and the dry shore rises to the same waterline instead of leaving a broad, floating-looking shelf.
 - Water cells track falling versus supported/settled state; a vertical stream becomes a horizontal flow when it reaches support. Water remains non-solid and continues to spread from its source.
@@ -158,3 +158,13 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Replaced generic inventory squares with cached pixel-art item sprites: isometric block cubes use each block's actual 64px face textures; apples, bread, raw foods, coal, raw ores, ingots, diamonds, wool, sticks, torches, and tools receive distinct silhouettes and highlights.
 - Added F5 camera cycling: first person, third person from behind, and third person facing the player. A separate humanoid avatar follows the physics position; the third-person camera uses a world raycast to avoid clipping through terrain and trees.
 - The rendered camera is decoupled from the physical player position, so third-person orbiting does not change movement, collisions, water immersion, drops or saved coordinates.
+
+## Alpha 1.2.0 — performance optimization
+
+- Chunks outside the adaptive render radius are hidden without removing their generated data; the range adjusts with measured frame rate.
+- Block interaction and third-person camera raycasts now visit only nearby chunk groups instead of all 144 chunks.
+- Water simulation updates fewer cells per tick and queues affected chunk mesh rebuilds, flushing a small number per frame to reduce frame-time spikes.
+- Water surface tessellation was reduced from 6 × 6 to 3 × 3 subdivisions per fluid cell, preserving multi-scale shader animation while reducing triangles substantially.
+- Renderer pixel ratio starts capped at 1.25 and automatically reduces or recovers based on measured FPS.
+- Mob animation/AI updates are capped at 30 Hz; the render loop remains unrestricted.
+- Added a live FPS and adaptive-quality indicator.
