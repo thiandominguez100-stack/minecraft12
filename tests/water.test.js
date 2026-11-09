@@ -180,6 +180,15 @@ test("legacy saves do not restore every natural river cell as an active source",
  const fluid=new WaterSimulation(world);
  fluid.restoreSources([[x,WATER_LEVEL,z]]);
  assert.equal(fluid.exportSources().length,0);
+ let legacyX=null,legacyZ=null;
+ for(let candidate=-80;candidate<=80;candidate++){
+  const cz=Math.round(riverCenterAt(candidate,world.seed)),sample=terrainSample(candidate,cz,world.seed);
+  if(sample.isWaterColumn&&sample.waterSource){legacyX=candidate;legacyZ=cz;break;}
+ }
+ assert.notEqual(legacyX,null);
+ world.set(legacyX,WATER_LEVEL+1,legacyZ,"water");
+ fluid.restoreSources([[legacyX,WATER_LEVEL+1,legacyZ]]);
+ assert.ok(!fluid.exportSources().some(([sx,sy,sz])=>sx===legacyX&&sy===WATER_LEVEL+1&&sz===legacyZ));
  world.set(90,WATER_LEVEL,90,"water");
  fluid.restoreSources([[90,WATER_LEVEL,90]]);
  assert.ok(fluid.exportSources().some(([sx,sy,sz])=>sx===90&&sy===WATER_LEVEL&&sz===90));
