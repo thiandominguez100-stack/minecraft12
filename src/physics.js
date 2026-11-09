@@ -28,14 +28,16 @@ export class FirstPersonPhysics{
     this.submersion=world.getSubmersion?world.getSubmersion(position,PLAYER_RADIUS,PLAYER_HEIGHT):0;
     this.inWater=this.submersion>.035;
     if(this.inWater){
-      this.onGround=false;this.jumpBuffer=0;
+      this.onGround=false;
+      if(this.jumpBuffer>0)velocity.y=Math.max(velocity.y,3.2);
+      this.jumpBuffer=0;
       const swimSpeed=Math.min(speed,controls.sprint?4.1:3.35);
       const targetSwimX=inputX*swimSpeed,targetSwimZ=inputZ*swimSpeed;
       velocity.x=approach(velocity.x,inputLength>0?targetSwimX:0,(inputLength>0?9:2.8)*dt);
       velocity.z=approach(velocity.z,inputLength>0?targetSwimZ:0,(inputLength>0?9:2.8)*dt);
       velocity.y+=(-3.5+this.submersion*8)*dt;
       velocity.y*=Math.exp(-2.4*dt);
-      if(controls.jump)velocity.y=Math.min(4.8,velocity.y+11*dt);
+      if(controls.jump)velocity.y=Math.min(4.8,velocity.y+7*dt);
 
       const swimX=velocity.x*dt,swimZ=velocity.z*dt;
       const swimSteps=Math.max(1,Math.ceil(Math.max(Math.abs(swimX),Math.abs(swimZ))/.075));
