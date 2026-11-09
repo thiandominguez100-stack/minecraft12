@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP} from "./data.js";
 import {makeBlockTexture} from "./textures.js";
+import {blockMaterialSettings} from "./texture-spec.js";
 import {buildWaterSurface,waterSurfaceY} from "./water-surface.js";
 import {
   CHUNK_SIZE,CHUNKS_X,CHUNKS_Z,TOTAL_CHUNKS,WORLD_MIN_X,WORLD_MIN_Z,
@@ -28,10 +29,9 @@ export class VoxelWorld{
     this.bounds={minX:WORLD_MIN_X,maxX:WORLD_MAX_X,minZ:WORLD_MIN_Z,maxZ:WORLD_MAX_Z,width:WORLD_WIDTH,depth:WORLD_DEPTH};
     const faces=["right","left","top","bottom","front","back"];
     for(const def of BLOCKS){
+      const settings=blockMaterialSettings(def.id);
       const materials=faces.map(face=>new THREE.MeshLambertMaterial({
-        map:makeBlockTexture(def,face),transparent:!!def.transparent,
-        opacity:def.id==="water"?.78:def.id==="glass"?.68:1,
-        depthWrite:def.id!=="water"&&def.id!=="glass",alphaTest:def.id==="leaves"?.24:0
+        map:makeBlockTexture(def,face),...settings
       }));
       this.materials.set(def.id,materials);
     }
