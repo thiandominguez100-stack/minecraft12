@@ -1,6 +1,6 @@
 export const CHUNK_SIZE=16,CHUNKS_X=12,CHUNKS_Z=12,TOTAL_CHUNKS=CHUNKS_X*CHUNKS_Z;
 export const WORLD_MIN_X=-96,WORLD_MIN_Z=-96,WORLD_WIDTH=CHUNKS_X*CHUNK_SIZE,WORLD_DEPTH=CHUNKS_Z*CHUNK_SIZE;
-export const WORLD_MAX_X=WORLD_MIN_X+WORLD_WIDTH-1,WORLD_MAX_Z=WORLD_MIN_Z+WORLD_DEPTH-1,WATER_LEVEL=5;
+export const WORLD_MAX_X=WORLD_MIN_X+WORLD_WIDTH-1,WORLD_MAX_Z=WORLD_MIN_Z+WORLD_DEPTH-1,WATER_LEVEL=4;
 export const hash=(x,z,seed=0)=>{let n=(x*374761393+z*668265503+seed*1442695041)|0;n=(n^(n>>>13))*1274126177;return ((n^(n>>>16))>>>0)/4294967295;};
 const lerp=(a,b,t)=>a+(b-a)*t,smooth=t=>t*t*(3-2*t);
 export function valueNoise(x,z,scale,seed){const gx=x/scale,gz=z/scale,x0=Math.floor(gx),z0=Math.floor(gz),tx=smooth(gx-x0),tz=smooth(gz-z0);return lerp(lerp(hash(x0,z0,seed),hash(x0+1,z0,seed),tx),lerp(hash(x0,z0+1,seed),hash(x0+1,z0+1,seed),tx),tz);}
