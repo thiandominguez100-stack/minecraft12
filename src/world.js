@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP} from "./data.js";
 import {makeBlockTexture} from "./textures.js";
 import {blockMaterialSettings} from "./texture-spec.js";
-import {buildWaterSurface,waterSurfaceY} from "./water-surface.js";
+import {buildWaterSurface,waterSurfaceY,waterWaveHeight} from "./water-surface.js";
 import {
   CHUNK_SIZE,CHUNKS_X,CHUNKS_Z,TOTAL_CHUNKS,WORLD_MIN_X,WORLD_MIN_Z,
   WORLD_WIDTH,WORLD_DEPTH,WORLD_MAX_X,WORLD_MAX_Z,WATER_LEVEL,
@@ -381,9 +381,7 @@ export class VoxelWorld{
         const array=position.array;
         for(let i=0;i<weights.count;i++){
           const offset=i*3,x=base[offset],z=base[offset+2],weight=weights.getX(i);
-          const broad=Math.sin(x*.82+time*1.18)*Math.cos(z*.73-time*.91);
-          const ripple=Math.sin((x+z)*.57-time*.72);
-          array[offset+1]=base[offset+1]+weight*(broad*.024+ripple*.009);
+          array[offset+1]=base[offset+1]+waterWaveHeight(x,z,time,weight);
         }
         position.needsUpdate=true;
       }
