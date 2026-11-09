@@ -130,7 +130,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Added downward swimming force on Shift, while Space remains the upward swim stroke. The first-person arm is smaller, opaque, rendered above translucent water and includes a visible palm and fingers.
 - Added regression coverage for diving, the 64-chunk footprint and water sources refusing to overwrite solid blocks.
 
-## Alpha 1.3.2 — 64×64 block art and expanded world
+## Alpha 1.4.0 — 64×64 block art and expanded world
 
 - Every block face now uses an individually designed 64 × 64 pixel texture, with nearest-pixel sampling and mipmapped distance rendering.
 - Added distinct art treatments for grass tops and soil edges, layered dirt, fractured stone, bevelled cobblestone, bark and growth rings, plank seams and knots, sand ripples, bricks, minerals, bedrock, glass glints, snow, clay, moss, workbench, furnace, chest and torch.
@@ -140,7 +140,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Increased animal distribution across the larger world and extended wandering bounds to the new map edges.
 - Increased camera visibility and minimum night ambient lighting so detailed foliage remains readable after sunset.
 
-## Alpha 1.3.2 — first-person foliage occlusion and Minecraft-style crafting
+## Alpha 1.4.0 — first-person foliage occlusion and Minecraft-style crafting
 
 - Leaf blocks now render as opaque alpha-cut materials (alpha test 0.42, depth writing enabled) instead of late transparent objects. Their transparent texture holes stay open, while visible leaves depth-occlude correctly and no longer draw over the first-person hand.
 - First-person arm render order is raised above world geometry to keep the held arm clearly visible.
@@ -150,7 +150,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Craft ingredients are moved out of inventory into grid cells, consumed when crafting, and safely returned when closing the screen. Output space is checked before consuming a recipe.
 - Added 2 × 2/3 × 3 recipe matching and inventory-capacity regression tests.
 
-## Alpha 1.3.2 — stable shorelines, item sprites and third-person cameras
+## Alpha 1.4.0 — stable shorelines, item sprites and third-person cameras
 
 - River and lake beds now use a shallow shoreline profile: water depth falls toward the bank and the dry shore rises to the same waterline instead of leaving a broad, floating-looking shelf.
 - Water cells track falling versus supported/settled state; a vertical stream becomes a horizontal flow when it reaches support. Water remains non-solid and continues to spread from its source.
@@ -159,7 +159,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Added F5 camera cycling: first person, third person from behind, and third person facing the player. A separate humanoid avatar follows the physics position; the third-person camera uses a world raycast to avoid clipping through terrain and trees.
 - The rendered camera is decoupled from the physical player position, so third-person orbiting does not change movement, collisions, water immersion, drops or saved coordinates.
 
-## Alpha 1.3.2 — performance optimization
+## Alpha 1.4.0 — performance optimization
 
 - Chunks outside the adaptive render radius are hidden without removing their generated data; the range adjusts with measured frame rate.
 - Block interaction and third-person camera raycasts now visit only nearby chunk groups instead of all 144 chunks.
@@ -169,7 +169,7 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Mob animation/AI updates are capped at 30 Hz; the render loop remains unrestricted.
 - Added a live FPS and adaptive-quality indicator.
 
-## Alpha 1.3.2 — natural water restoration and low-end performance
+## Alpha 1.4.0 — natural water restoration and low-end performance
 
 - Widened generated rivers to a roughly 19-block water footprint and enlarged the lake cores. The underwater basin transitions up to block height 5, aligning dry-bank top faces with the natural water surface at y=5.5.
 - Every generated water column now has a real surface; only sparse centerline/lake-core cells are registered as active water sources. This keeps natural rivers visually continuous while avoiding thousands of source cells being simulated on world load.
@@ -181,9 +181,17 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 
 - When an older save is loaded, legacy natural-river source entries are filtered against the new sparse source layout. Manually placed water sources outside generated channels remain restorable.
 
-## Alpha 1.3.2 — visible water rendering fix
+## Alpha 1.4.0 — visible water rendering fix
 
 - Filled the entire carved basin instead of the narrower inner channel, avoiding a wide empty sand trench around the river.
 - Deepened the blue water texture and increased surface opacity to 0.94; the material now writes depth, tests depth, is unaffected by tone mapping, and uses a slight polygon offset to prevent z-fighting with the shoreline.
 - Water meshes now render later than terrain and bypass frustum-culling bounds that can become stale during wave animation.
 - Increased natural river and lake water coverage to the full basin width, while maintaining a dry sand bank beyond the intended waterline.
+
+## Alpha 1.4.0 — water renderer rebuilt from scratch
+
+- Removed the custom GLSL water shader completely. Water no longer depends on custom shader compilation, interpolated wave attributes, vertex-color support or lighting.
+- Rebuilt the water geometry as connected top quads and only exposed side faces, with shared continuous flat waterline across neighboring cells.
+- Water now uses an opaque, unlit, depth-tested MeshBasicMaterial with a dedicated blue animated pixel-water texture. The renderer draws the water surface after terrain, while depth testing still prevents it from appearing through solid terrain.
+- Kept the existing fluid simulation for flowing, falling, swimming and water placement; only the visual surface renderer was replaced.
+- Added tests for visible top faces, continuous neighboring surfaces, correct waterline height and real water-block volume in generated river/lake basins.
