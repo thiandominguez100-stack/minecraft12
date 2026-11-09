@@ -140,3 +140,14 @@ test("water above an open cell falls and becomes supported at the next floor",()
  assert.equal(world.get(0,1,0),"water");
  assert.equal(fluid.levels.get(key(0,1,0)).settled,true);
 });
+
+test("flow mesh rebuilds are spread across updates instead of rebuilding every changed chunk at once",()=>{
+ const world=new FakeWorld();makeFloor(world,12,19);
+ const fluid=new WaterSimulation(world,{tickInterval:.1,updateBudget:1000,maxChunkRebuildsPerFrame:1});
+ fluid.addSource(15,1,15);world.rebuilt.length=0;
+ fluid.update(.1);
+ assert.ok(world.rebuilt.length<=1);
+ assert.ok(fluid.pendingChunks.size>=1);
+ for(let i=0;i<12;i++)fluid.update(.01);
+ assert.equal(fluid.pendingChunks.size,0);
+});
