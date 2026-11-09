@@ -19,7 +19,7 @@ const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,260);
 const playerPosition=new THREE.Vector3(31,13,31);
 scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
-const maxPixelRatio=Math.min(devicePixelRatio||1,1.25);let adaptivePixelRatio=maxPixelRatio,adaptiveRenderDistance=6.5;
+const maxPixelRatio=Math.min(devicePixelRatio||1,1.0);let adaptivePixelRatio=maxPixelRatio,adaptiveRenderDistance=5.8;
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(adaptivePixelRatio);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
 const armRig=new THREE.Group();armRig.position.set(.49,-.56,-.84);camera.add(armRig);
 const sleeveMaterial=new THREE.MeshLambertMaterial({color:0x47677c});
@@ -94,12 +94,13 @@ function samplePerformance(dt){
  if(performanceElapsed<2)return;
  estimatedFPS=performanceFrames/performanceElapsed;
  performanceElapsed=0;performanceFrames=0;
- if(estimatedFPS<36)adaptivePixelRatio=Math.max(.82,adaptivePixelRatio-.10);
- else if(estimatedFPS<46)adaptivePixelRatio=Math.max(.90,adaptivePixelRatio-.05);
- else if(estimatedFPS>56)adaptivePixelRatio=Math.min(maxPixelRatio,adaptivePixelRatio+.04);
+ if(estimatedFPS<32)adaptivePixelRatio=Math.max(.65,adaptivePixelRatio-.12);
+ else if(estimatedFPS<40)adaptivePixelRatio=Math.max(.72,adaptivePixelRatio-.08);
+ else if(estimatedFPS<48)adaptivePixelRatio=Math.max(.82,adaptivePixelRatio-.05);
+ else if(estimatedFPS>57)adaptivePixelRatio=Math.min(maxPixelRatio,adaptivePixelRatio+.025);
  renderer.setPixelRatio(adaptivePixelRatio);
- adaptiveRenderDistance=estimatedFPS<34?5.0:estimatedFPS<43?5.6:estimatedFPS<52?6.0:6.5;
- const quality=estimatedFPS<34?"AHORRO":estimatedFPS<45?"RENDIMIENTO":estimatedFPS<55?"EQUILIBRADO":"ALTO";
+ adaptiveRenderDistance=estimatedFPS<32?3.8:estimatedFPS<40?4.2:estimatedFPS<48?4.8:estimatedFPS<56?5.5:6.2;
+ const quality=estimatedFPS<34?"AHORRO":estimatedFPS<44?"RENDIMIENTO":estimatedFPS<55?"EQUILIBRADO":"ALTO";
  const indicator=$("performance-indicator");if(indicator)indicator.textContent=Math.round(estimatedFPS)+" FPS · "+quality+" · "+adaptiveRenderDistance.toFixed(1)+" chunks";
 }
 function notify(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimerId);toastTimerId=setTimeout(()=>el.classList.remove("show"),2100)}
@@ -459,7 +460,7 @@ if(!loadGame())$("resume-save").disabled=true;
 function tick(now){
  requestAnimationFrame(tick);const dt=Math.min((now-(tick.last||now))/1000,.05);tick.last=now;
  samplePerformance(dt);
- if(mobs){mobUpdateElapsed+=dt;if(mobUpdateElapsed>=1/30){mobs.update(mobUpdateElapsed,now/1000);mobUpdateElapsed=0;}}
+ if(mobs){mobUpdateElapsed+=dt;if(mobUpdateElapsed>=1/20){mobs.update(mobUpdateElapsed,now/1000,playerPosition,adaptiveRenderDistance*16+8);mobUpdateElapsed=0;}}
  if(!started){const orbit=now*.000045;camera.position.set(Math.cos(orbit)*33,12+Math.sin(orbit*.7)*1.2,Math.sin(orbit)*33);camera.lookAt(0,4,0)}
  armRig.visible=started&&locked&&!uiOpen&&viewMode===0;
  if(armRig.visible){
