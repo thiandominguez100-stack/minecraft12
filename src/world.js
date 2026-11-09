@@ -156,7 +156,7 @@ export class VoxelWorld{
   }
 
   placeLandmark(){
-    const cx=9,cz=13,ground=terrainSample(cx,cz,this.seed).height;
+    const cx=9,cz=-18,ground=terrainSample(cx,cz,this.seed).height;
     if(terrainSample(cx,cz,this.seed).biome==="desert")return;
     for(let x=-5;x<=5;x++)for(let z=-4;z<=4;z++)
       if(Math.abs(x)===5||Math.abs(z)===4)this.putBlock(cx+x,ground,cz+z,"cobblestone");
