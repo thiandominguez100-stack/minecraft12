@@ -135,7 +135,7 @@ async function replaceWorld(seed,changes=[],waterSources=[],savedDrops=[]){
  $("loading-screen").style.display="none";
 }
 async function newWorld(nextMode){
- started=false;leftDown=false;miningProgress=0;
+ started=false;leftDown=false;miningProgress=0;personalCraftGrid=Array(4).fill(null);workbenchCraftGrid=Array(9).fill(null);craftingStationOpen=false;activeCraftCell=null;
  physics.reset();velocity.set(0,0,0);
  const seed=Math.floor(100000+Math.random()*900000000);
  await replaceWorld(seed);
@@ -150,7 +150,7 @@ async function loadIntoGame(data){
  if(!data){notify("No se encontró una partida guardada.");return}
  started=false;
  await replaceWorld(Number(data.seed)||20261109,data.changes||[],data.waterSources||[],data.drops||[]);
- inventory=new Inventory(data.mode||"survival");inventory.restore(data.inventory||[]);inventory.selected=clamp(data.selected||0,0,8);
+ inventory=new Inventory(data.mode||"survival");inventory.restore(data.inventory||[]);inventory.selected=clamp(data.selected||0,0,8);personalCraftGrid=Array(4).fill(null);workbenchCraftGrid=Array(9).fill(null);craftingStationOpen=false;activeCraftCell=null;
  physics.reset();velocity.set(0,0,0);
  setMode(data.mode==="creative"?"creative":"survival");
  if(Array.isArray(data.position)&&data.position.length===3)camera.position.set(...data.position);else camera.position.set(0,world.highest(0,0)+2.12,0);
@@ -380,15 +380,7 @@ function renderCatalog(){
   };el.append(div)
  })
 }
-function renderRecipes(){
- const el=$("recipe-list");el.innerHTML="";
- RECIPES.forEach(r=>{
-  const row=document.createElement("div");row.className="recipe";
-  const ingredients=Object.entries(r.in).map(([id,n])=>(ITEM_MAP[id]?.name||id)+" ×"+n).join(" + ");
-  const btn=document.createElement("button");btn.className="btn small";btn.textContent="Fabricar";btn.disabled=mode==="survival"&&(!inventory.has(r.in)||(r.station==="table"&&!inventory.has({crafting_table:1})));btn.onclick=()=>{const result=inventory.craft(r.id);notify(result.message);renderHotbar();renderInventory();renderRecipes()};
-  const left=document.createElement("div");left.innerHTML="<strong>"+r.name+"</strong><small>"+ingredients+(r.station==="table"?" · Requiere mesa":" · Inventario")+"</small>";row.append(left,btn);el.append(row)
- })
-}
+function renderRecipes(){renderWorkbenchBook()}
 function openCommands(){setOverlay("command-overlay",true);$("command-input").focus()}
 function commandOutput(message){const log=$("command-log"),line=document.createElement("div");line.textContent="› "+message;log.append(line);log.scrollTop=log.scrollHeight}
 function give(id,n=1){
