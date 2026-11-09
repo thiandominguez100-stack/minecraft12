@@ -163,6 +163,7 @@ function runCommand(raw){
 function togglePause(){if(!started)return;setOverlay("pause-overlay",true)}
 function hideOverlay(id){$(id).style.display="none";uiOpen=["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex")}
 renderer.domElement.addEventListener("click",()=>{if(started&&!uiOpen&&!locked)requestLock()});
+renderer.domElement.addEventListener("wheel",e=>{if(!locked)return;inventory.selected=(inventory.selected+(e.deltaY>0?1:8))%9;renderHotbar();renderInventory()},{passive:true});
 renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;miningProgress=0;miningKey=""}if(e.button===2)e.preventDefault()});
 renderer.domElement.addEventListener("mouseup",e=>{if(e.button===0)leftDown=false;if(e.button===2&&locked)useSelected()});
 renderer.domElement.addEventListener("contextmenu",e=>e.preventDefault());
@@ -170,7 +171,16 @@ document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockEl
 document.addEventListener("mousemove",e=>{if(!locked)return;yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=clamp(pitch,-1.52,1.52);camera.rotation.order="YXZ";camera.rotation.y=yaw;camera.rotation.x=pitch});
 document.addEventListener("keydown",e=>{
  keys[e.code]=true;
- if(e.code==="Escape"&&started&&!uiOpen){leftDown=false;togglePause();return}
+ if(e.code==="Escape"&&started){
+  leftDown=false;
+  if($("inventory-overlay").style.display==="flex")hideOverlay("inventory-overlay");
+  else if($("command-overlay").style.display==="flex")hideOverlay("command-overlay");
+  else if($("pause-overlay").style.display==="flex")hideOverlay("pause-overlay");
+  else togglePause();
+  return;
+ }
+ const typing=e.target instanceof HTMLElement&&(e.target.isContentEditable||["INPUT","TEXTAREA"].includes(e.target.tagName));
+ if(typing)return;
  if(e.code==="KeyE"&&!e.repeat&&started){if($("inventory-overlay").style.display==="flex")hideOverlay("inventory-overlay");else openInventory()}
  if(e.code==="KeyT"&&!e.repeat&&started)openCommands();
  if(/^Digit[1-9]$/.test(e.code)){inventory.selected=Number(e.code.slice(5))-1;renderHotbar();renderInventory()}
