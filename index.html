@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BlockWorld 3D</title>
+<style>
+:root{--panel:rgba(15,19,25,.94);--line:#ffffff2b;--text:#f4f6f8;--muted:#aeb8c5;--accent:#75d36e}
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#8bc8ed;color:var(--text);font:14px system-ui,Segoe UI,sans-serif}canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none}.top{position:absolute;top:12px;left:12px;background:#101820b8;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:12px}.top b{color:#9bea91}
+#cross{position:absolute;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%)}#cross:before,#cross:after{content:"";position:absolute;background:white;box-shadow:0 1px 3px #000}#cross:before{width:2px;height:18px;left:8px}#cross:after{height:2px;width:18px;top:8px}
+#hotbar{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:4px;padding:5px;background:#111a;border:2px solid #ffffff88;border-radius:8px;pointer-events:auto}
+.slot{width:48px;height:48px;border:2px solid #ffffff55;background:#242a30d9;border-radius:4px;display:grid;place-items:center;position:relative;cursor:pointer}.slot.active{border:3px solid white;background:#ffffff35}.swatch{width:25px;height:25px;border:2px solid #0005;box-shadow:inset -4px -4px #0002}.count{position:absolute;right:3px;bottom:0;text-shadow:1px 1px #000;font-size:12px}
+#hint{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);background:#111b;padding:6px 12px;border-radius:6px;color:#fff;white-space:nowrap;font-size:12px}
+.overlay{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;pointer-events:auto}.panel{width:min(760px,94vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 20px 80px #0008}.panel h2{margin:0 0 12px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tabs{display:flex;gap:6px;margin:10px 0}.btn,.tab{border:1px solid var(--line);border-radius:7px;background:#29323d;color:white;padding:8px 12px;cursor:pointer}.btn:hover,.tab:hover{background:#3b4857}.tab.active{background:#527e4d}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:12px}.item{background:#202832;border:1px solid var(--line);border-radius:8px;padding:10px 5px;text-align:center;cursor:pointer}.item:hover{border-color:var(--accent)}.item .swatch{margin:0 auto 7px;width:30px;height:30px}.muted{color:var(--muted)}input{background:#111820;color:white;border:1px solid var(--line);border-radius:7px;padding:9px;min-width:180px}#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#182b3b88,#101820bb);pointer-events:auto}.startbox{width:min(520px,92vw);padding:28px;background:#111923ed;border:1px solid var(--line);border-radius:16px;text-align:center}.startbox h1{font-size:34px;margin:0 0 5px}.startbox p{color:var(--muted);line-height:1.5}.big{background:#5b9e50;border:0;color:white;border-radius:8px;padding:12px 22px;font-weight:700;cursor:pointer;font-size:15px}#chatlog{height:130px;overflow:auto;background:#0b1016;border-radius:8px;padding:8px;margin:8px 0;font:12px ui-monospace,monospace}#command{width:100%}.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="hud"><div class="top">BLOCKWORLD 3D <b id="modeLabel">CREATIVO</b><br><span id="coords">X: 0 Y: 0 Z: 0</span></div><div id="cross"></div><div id="hint">WASD mover · Espacio saltar · Click izq. romper · Click der. colocar · E inventario · T comandos</div><div id="hotbar"></div></div>
+<div id="start"><div class="startbox"><h1>BLOCKWORLD 3D</h1><p>Un mundo de bloques 3D para explorar, construir y experimentar. Esta es la primera versión jugable.</p><button class="big" id="play">ENTRAR AL MUNDO</button><p class="muted">WASD · Mouse · Espacio · E inventario · T comandos · Esc liberar cursor</p></div></div>
+<div class="overlay" id="inventory"><div class="panel"><div class="row" style="justify-content:space-between"><h2>Inventario</h2><button class="btn" id="closeInv">Cerrar ✕</button></div><div class="tabs" id="tabs"></div><input id="search" placeholder="Buscar bloques y objetos..."><div class="grid" id="items"></div><p class="muted">Selecciona un objeto para colocarlo en la barra rápida. En Creativo los bloques son ilimitados.</p></div></div>
+<div class="overlay" id="commands"><div class="panel"><div class="row" style="justify-content:space-between"><h2>Consola de comandos</h2><button class="btn" id="closeCmd">Cerrar ✕</button></div><div id="chatlog">Escribe /help para ver los comandos disponibles.</div><input id="command" placeholder="/gamemode creative" autocomplete="off"><p class="muted">Comandos: /gamemode, /give, /time, /weather, /tp, /help, /clear</p></div></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x8bc8ed);scene.fog=new THREE.Fog(0x8bc8ed,24,75);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,120);camera.position.set(0,4,7);
+const renderer=new THREE.WebGLRenderer({antialias:false});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xd9efff,0x66704c,2));const sun=new THREE.DirectionalLight(0xfff1cf,2.2);sun.position.set(-25,40,18);sun.castShadow=true;scene.add(sun);
+const mat=(color)=>new THREE.MeshLambertMaterial({color});
+const defs=[
+{id:'grass',name:'Bloque de césped',color:0x69a844,cat:'Naturaleza'},
+{id:'dirt',name:'Tierra',color:0x876044,cat:'Naturaleza'},
+{id:'stone',name:'Piedra',color:0x85898b,cat:'Naturaleza'},
+{id:'wood',name:'Tronco',color:0x8a6037,cat:'Naturaleza'},
+{id:'leaves',name:'H hojas',color:0x397b39,cat:'Naturaleza'},
+{id:'sand',name:'Arena',color:0xd9c887,cat:'Naturaleza'},
+{id:'water',name:'Agua',color:0x397fc1,cat:'Naturaleza',solid:false},
+{id:'planks',name:'Tablones',color:0xb68a51,cat:'Construcción'},
+{id:'brick',name:'Ladrillos',color:0x9b5140,cat:'Construcción'},
+{id:'glass',name:'Cristal',color:0xb9e5e8,cat:'Construcción',transparent:true},
+{id:'cobble',name:'Roca labrada',color:0x666b70,cat:'Construcción'},
+{id:'bedrock',name:'Roca madre',color:0x34383d,cat:'Construcción'},
+{id:'gold',name:'Bloque de oro',color:0xf0c52d,cat:'Construcción'},
+{id:'diamond',name:'Bloque de gema',color:0x36cfc2,cat:'Construcción'},
+{id:'torch',name:'Antorcha',color:0xffc34d,cat:'Decoración'}
+];
+const byId=Object.fromEntries(defs.map(d=>[d.id,d]));const materials={};for(const d of defs)materials[d.id]=new THREE.MeshLambertMaterial({color:d.color,transparent:!!d.transparent,opacity:d.transparent?.48:1});
+const cube=new THREE.BoxGeometry(1,1,1),blocks=new Map(),worldGroup=new THREE.Group();scene.add(worldGroup);
+const key=(x,y,z)=>x+','+y+','+z;
+function addBlock(x,y,z,id,save=true){const d=byId[id];if(!d)return;const k=key(x,y,z);if(blocks.has(k))removeBlock(x,y,z,false);const mesh=new THREE.Mesh(cube,materials[id]);mesh.position.set(x,y,z);mesh.castShadow=id!=='water';mesh.receiveShadow=true;mesh.userData={x,y,z,id};worldGroup.add(mesh);blocks.set(k,mesh);if(save)dirty=true;return mesh}
+function removeBlock(x,y,z,save=true){const k=key(x,y,z),m=blocks.get(k);if(!m)return;worldGroup.remove(m);blocks.delete(k);if(save)dirty=true}
+let dirty=false;const heightAt=(x,z)=>Math.floor(1.3+Math.sin(x*.22)*1.1+Math.cos(z*.19)*.8+Math.sin((x+z)*.12)*.55);
+for(let x=-24;x<=24;x++)for(let z=-24;z<=24;z++){let h=heightAt(x,z);for(let y=-2;y<=h;y++){let id=y===h?'grass':y>h-3?'dirt':'stone';if(Math.abs(x)>20||Math.abs(z)>20)id='sand';addBlock(x,y,z,id,false)}if((Math.abs(x*13+z*7)%47)===0&&h>1){for(let y=1;y<=3;y++)addBlock(x,h+y,z,'wood',false);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)for(let dy=2;dy<=4;dy++)if(Math.abs(dx)+Math.abs(dz)+Math.abs(dy-3)<4)addBlock(x+dx,h+dy,z+dz,'leaves',false)}}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),mat(0x6c9a50));ground.rotation.x=-Math.PI/2;ground.position.y=-3;scene.add(ground);
+const player={vel:new THREE.Vector3(),onGround:false,mode:'creative',selected:0};let inventory={grass:64,dirt:64,stone:64,wood:32,planks:32,torch:16};let hot=['grass','dirt','stone','wood','planks','brick','glass','sand','torch'];let keys={},yaw=0,pitch=0,locked=false;
+const hotbar=document.getElementById('hotbar'),modeLabel=document.getElementById('modeLabel'),coords=document.getElementById('coords');
+function drawHotbar(){hotbar.innerHTML='';hot.forEach((id,i)=>{let d=byId[id],el=document.createElement('div');el.className='slot'+(i===player.selected?' active':'');el.innerHTML='<div class="swatch" style="background:#'+d.color.toString(16).padStart(6,'0')+'"></div><span class="count">'+(player.mode==='creative'?'∞':(inventory[id]||0))+'</span>';el.title=(i+1)+' · '+d.name;el.onclick=()=>{player.selected=i;drawHotbar()};hotbar.append(el)})}
+drawHotbar();function setMode(m){player.mode=m;modeLabel.textContent=m.toUpperCase();drawHotbar();say('Modo de juego: '+m)}
+const ray=new THREE.Raycaster();ray.far=6;function target(){ray.setFromCamera(new THREE.Vector2(0,0),camera);return ray.intersectObjects(worldGroup.children,false)[0]}
+function mine(){let hit=target();if(!hit)return;let p=hit.object.userData;removeBlock(p.x,p.y,p.z);if(player.mode==='survival'&&p.id!=='bedrock')inventory[p.id]=(inventory[p.id]||0)+1;drawHotbar()}
+function place(){let hit=target();if(!hit)return;let n=hit.face.normal,p=hit.object.userData,x=p.x+n.x,y=p.y+n.y,z=p.z+n.z;if(Math.abs(camera.position.x-x)<.8&&Math.abs(camera.position.z-z)<.8&&Math.abs(camera.position.y-1-y)<1.5)return;let id=hot[player.selected];if(player.mode==='survival'&&(inventory[id]||0)<1){say('No tienes '+byId[id].name);return}addBlock(x,y,z,id);if(player.mode==='survival')inventory[id]--;drawHotbar()}
+renderer.domElement.addEventListener('mousedown',e=>{if(!locked)return;if(e.button===0)mine();if(e.button===2)place()});renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{keys[e.code]=true;if(/^Digit[1-9]$/.test(e.code)){player.selected=Number(e.code.slice(5))-1;drawHotbar()}if(e.code==='KeyE'&&!e.repeat)toggle('inventory');if(e.code==='KeyT'&&!e.repeat)openCommands();if(e.code==='Escape'){if(locked)document.exitPointerLock()}});document.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('click',()=>{if(!locked&&document.getElementById('start').classList.contains('hidden')&&document.querySelectorAll('.overlay[style*="flex"]').length===0)renderer.domElement.requestPointerLock()});
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement});
+document.addEventListener('mousemove',e=>{if(!locked)return;yaw-=e.movementX*.002;pitch-=e.movementY*.002;pitch=Math.max(-1.5,Math.min(1.5,pitch));camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch});
+function toggle(id){let el=document.getElementById(id);el.style.display=el.style.display==='flex'?'none':'flex';if(el.style.display==='flex'&&locked)document.exitPointerLock()}
+function say(t){let log=document.getElementById('chatlog');if(log){log.innerHTML+='<div>› '+String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</div>';log.scrollTop=log.scrollHeight}}
+function openCommands(){toggle('commands');setTimeout(()=>document.getElementById('command').focus(),20)}
+document.getElementById('play').onclick=()=>{document.getElementById('start').classList.add('hidden');renderer.domElement.requestPointerLock()};
+document.getElementById('closeInv').onclick=()=>toggle('inventory');document.getElementById('closeCmd').onclick=()=>toggle('commands');
+const tabs=['Todos','Naturaleza','Construcción','Decoración'];let tab='Todos';
+function buildInventory(){let t=document.getElementById('tabs');t.innerHTML='';tabs.forEach(v=>{let b=document.createElement('button');b.className='tab'+(v===tab?' active':'');b.textContent=v;b.onclick=()=>{tab=v;buildInventory()};t.append(b)});let q=document.getElementById('search').value.toLowerCase(),g=document.getElementById('items');g.innerHTML='';defs.filter(d=>(tab==='Todos'||d.cat===tab)&&(d.name.toLowerCase().includes(q)||d.id.includes(q))).forEach(d=>{let el=document.createElement('div');el.className='item';el.innerHTML='<div class="swatch" style="background:#'+d.color.toString(16).padStart(6,'0')+'"></div>'+d.name;el.onclick=()=>{let i=hot.indexOf(d.id);if(i<0){hot[player.selected]=d.id}else player.selected=i;if(player.mode==='survival')inventory[d.id]=(inventory[d.id]||0)+1;drawHotbar();toggle('inventory')};g.append(el)})}
+document.getElementById('search').addEventListener('input',buildInventory);document.getElementById('tabs').addEventListener('click',()=>{});buildInventory();
+document.getElementById('command').addEventListener('keydown',e=>{if(e.key!=='Enter')return;let raw=e.target.value.trim();e.target.value='';if(!raw)return;let a=raw.replace(/^\//,'').split(/\s+/),cmd=a.shift().toLowerCase();switch(cmd){
+case'help':say('/gamemode creative|survival · /give bloque cantidad · /time set day|night · /weather clear|rain · /tp x y z · /clear');break;
+case'gamemode':if(['creative','survival'].includes(a[0]))setMode(a[0]);else say('Uso: /gamemode creative o survival');break;
+case'give':{let id=a[0],n=Math.max(1,Math.min(999,Number(a[1])||1));if(!byId[id]){say('Bloque desconocido. Usa el identificador, por ejemplo stone.');break}inventory[id]=(inventory[id]||0)+n;let i=hot.indexOf(id);if(i<0)hot[player.selected]=id;drawHotbar();say('Recibido: '+n+' '+byId[id].name);break}
+case'time':if(a[0]==='set'&&a[1]==='night'){scene.background.set(0x10182d);scene.fog.color.set(0x10182d);sun.intensity=.35;say('Ahora es de noche')}else{scene.background.set(0x8bc8ed);scene.fog.color.set(0x8bc8ed);sun.intensity=2.2;say('Ahora es de día')}break;
+case'weather':if(a[0]==='rain'){scene.fog.density=.012;say('Clima: lluvia (efecto de niebla)')}else{scene.fog.density=0;say('Clima despejado')}break;
+case'tp':if(a.length>=3){camera.position.set(Number(a[0])||0,Number(a[1])||4,Number(a[2])||0);say('Teletransporte realizado')}else say('Uso: /tp x y z');break;
+case'clear':inventory={};drawHotbar();say('Inventario vaciado');break;
+default:say('Comando desconocido. Escribe /help')}
+});
+document.getElementById('command').addEventListener('focus',()=>{if(locked)document.exitPointerLock()});
+let last=performance.now();function loop(now){requestAnimationFrame(loop);let dt=Math.min((now-last)/1000,.05);last=now;
+if(locked){let dir=new THREE.Vector3((keys.KeyD?1:0)-(keys.KeyA?1:0),0,(keys.KeyS?1:0)-(keys.KeyW?1:0));dir.normalize().applyAxisAngle(new THREE.Vector3(0,1,0),yaw);let speed=player.mode==='creative'?8:5;camera.position.x+=dir.x*speed*dt;camera.position.z+=dir.z*speed*dt;
+if(player.mode==='creative'){if(keys.Space)camera.position.y+=speed*dt;if(keys.ShiftLeft)camera.position.y-=speed*dt}else{player.vel.y-=19*dt;camera.position.y+=player.vel.y*dt;let floor=heightAt(Math.round(camera.position.x),Math.round(camera.position.z))+1.65;if(camera.position.y<floor){camera.position.y=floor;player.vel.y=0;player.onGround=true}if(keys.Space&&player.onGround){player.vel.y=7;player.onGround=false}}
+coords.textContent='X: '+camera.position.x.toFixed(1)+' Y: '+camera.position.y.toFixed(1)+' Z: '+camera.position.z.toFixed(1)}
+renderer.render(scene,camera)}
+requestAnimationFrame(loop);
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&player.mode==='creative')e.preventDefault()});
+document.getElementById('play').addEventListener('click',()=>setTimeout(()=>{if(!locked)renderer.domElement.requestPointerLock()},100));
+document.getElementById('closeInv').addEventListener('click',()=>{});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>
