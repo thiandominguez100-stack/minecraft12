@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import {WORLD_MIN_X,WORLD_MIN_Z,WORLD_MAX_X,WORLD_MAX_Z,WORLD_WIDTH,WORLD_DEPTH} from "./terrain.js";
 
 const seeded=(n)=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
 function material(color){return new THREE.MeshLambertMaterial({color,flatShading:true});}
@@ -42,9 +43,9 @@ function cube(parent,mat,size,position,uvRect=[0,0,1,1]){
 export class MobSystem{
   constructor(scene,world,seed=1){this.scene=scene;this.world=world;this.seed=seed;this.mobs=[];this.clock=0;this.spawn();}
   spawn(){
-    const types=["sheep","sheep","cow","chicken","sheep","cow","chicken","cow","sheep","chicken","cow","sheep","sheep","chicken","cow","sheep","cow","chicken"];let placed=0;
+    const palette=["sheep","sheep","cow","chicken","sheep","cow","chicken","cow","sheep","chicken","cow","sheep","sheep","chicken","cow","sheep","cow","chicken"];const types=Array.from({length:30},(_,i)=>palette[i%palette.length]);let placed=0;
     for(let i=0;i<types.length&&placed<types.length;i++){
-      const x=Math.round((seeded(this.seed+i*7)-.5)*116),z=Math.round((seeded(this.seed+i*13+4)-.5)*116);
+      const x=Math.round(WORLD_MIN_X+8+seeded(this.seed+i*7)*(WORLD_WIDTH-16)),z=Math.round(WORLD_MIN_Z+8+seeded(this.seed+i*13+4)*(WORLD_DEPTH-16));
       const y=this.world.highest(x,z),surface=this.world.get(x,y,z);
       if(!surface||!["grass","sand"].includes(surface)||this.world.get(x,y+1,z))continue;
       const mob=this.create(types[i],x,y+.5,z,i);this.mobs.push(mob);this.scene.add(mob.root);placed++;
@@ -144,7 +145,7 @@ export class MobSystem{
         else{
           const angle=seeded(mob.index+Math.floor(time*2)+this.seed)*Math.PI*2,distance=2+seeded(mob.index+Math.floor(time*3))*4;
           mob.target.set(
-            Math.max(-30,Math.min(29,mob.origin.x+Math.cos(angle)*distance)),
+            Math.max(WORLD_MIN_X+4,Math.min(WORLD_MAX_X-4,mob.origin.x+Math.cos(angle)*distance)),
             0,
             Math.max(-22,Math.min(21,mob.origin.z+Math.sin(angle)*distance))
           );
