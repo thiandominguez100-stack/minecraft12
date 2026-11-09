@@ -28,7 +28,7 @@ export class WaterSimulation{
     x=Math.round(x);y=Math.round(y);z=Math.round(z);
     const key=keyOf(x,y,z);
     if(!this.world.set(x,y,z,"water",false))return false;
-    this.sources.add(key);
+    this.sources.add(key);this.world.waterSources?.add(key);
     this.levels.set(key,{level:0,falling:false,source:true});
     this.active.add(key);
     const address=chunkAddress(x,z);
@@ -46,7 +46,7 @@ export class WaterSimulation{
       const [x,y,z]=decodeKey(key);
       if(![x,y,z].every(Number.isFinite)||y<-5||y>32)continue;
       if(this.world.get(x,y,z)!=="water"&&!this.world.set(x,y,z,"water",false))continue;
-      this.sources.add(key);
+      this.sources.add(key);this.world.waterSources?.add(key);
       this.levels.set(key,{level:0,falling:false,source:true});
       this.active.add(key);
       const address=chunkAddress(x,z);
