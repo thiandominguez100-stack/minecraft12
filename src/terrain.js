@@ -30,7 +30,7 @@ export function mountainCenter(seed){
 }
 export function riverCenterAt(x,seed){
   const shift=hash(seed,91,31)*60;
-  return -2+Math.sin((x+shift)*.09)*5+Math.sin((x+shift*.37)*.21)*1.7;
+  return 10+Math.sin((x+shift)*.09)*4.2+Math.sin((x+shift*.37)*.21)*1.4;
 }
 export function terrainSample(x,z,seed){
   const n1=(valueNoise(x,z,22,seed)-.5)*5.2;
