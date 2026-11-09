@@ -1,12 +1,12 @@
 # BlockWorld 3D — Technical roadmap
 
-## Current release: Alpha 1.6.0 — living atmosphere and simulation hardening
+## Current release: Alpha 2.0.0 — infinite wind-swept meadow
 
-Implemented in Alpha 1.6.0:
-- Gradient sky, dawn/dusk palette, orbiting sun and moon, night stars and moving voxel clouds.
-- Rain-darkened cloud formations with a single instanced cloud draw call.
-- Simulation pauses creature AI in menus and paused overlays.
-- Midnight save/load normalization preserves a saved time value of exactly zero.
+Implemented in Alpha 2.0.0:
+- Reset the generated environment to a flat, infinite grass-only meadow.
+- Stream 16 × 16 chunks around the player and unload distant chunks to bound memory use.
+- Add dense, deterministic instanced grass blades with coherent GPU-driven wind waves.
+- Preserve movement, collision, camera, HUD and local saves while isolating old worlds under a previous save key.
 
 Earlier milestones below are historical implementation notes.
 

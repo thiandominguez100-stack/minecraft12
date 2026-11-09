@@ -21,25 +21,14 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 
 ## Alpha 1.5.3 — atlas sampling correction\n\n- Replaced fragile texture-sample string substitution with an explicit Three.js `map_fragment` replacement; unknown shader layouts now fail loudly instead of silently sampling the full atlas.\n- Inset each atlas sampling rectangle by half a texel to keep nearest-filtered UVs inside their own 64×64 tile.\n- Added regression tests for shader patching, unexpected shader layouts and atlas tile boundaries.\n\n## Current alpha features
 
-- A prebuilt 64-chunk world: 8 × 8 chunks, each 16 × 16 blocks (128 × 128 block footprint).
-- Smooth, seeded terrain with connected hills, a tall snowy mountain, a winding river, a lake, meadow/forest/desert zones, broad-canopy trees, stone outcrops and a ruined landmark.
-- Cinematic title screen with a live, orbiting 3D landscape preview.
-- First-person voxel arm with idle, walking and mining motion.
-- A staged loading screen reporting progress across all 64 terrain chunks and their separate meshes.
-- Individually designed 64×64 pixel textures for every block face, including grass, wood, foliage, ores, glass and crafted blocks.
-- Per-chunk greedy meshes that merge adjacent coplanar block faces, cull hidden surfaces and rebuild neighboring chunks at boundaries.
-- First-person camera with buffered jumping, stable ground detection, AABB collision, gravity substeps, horizontal acceleration and air control.
-- Jump input has no artificial cooldown; a short input buffer prevents presses from being lost just before landing.
-- WASD movement, jumping, basic collision and Creative flight.
-- Block targeting, mining progress, block placement and a hotbar.
-- A 36-slot inventory with stack counts and basic tool durability.
-- Creative and Survival modes.
-- A small data-driven recipe list and crafting screen.
-- Animated passive creatures (sheep, cows and chickens) with 64×32 pixel texture atlases, idle/walk/flee cycles, raycast hitboxes, health, knockback and basic drops.
-- Pixel-art 16×16 hotbar/inventory icons for blocks, tools, materials and food.
-- Day/night lighting, simple rain particles and weather commands.
-- Local save/load in browser storage, including world edits and inventory.
-- Local command console.
+- Infinite, completely flat meadow: every generated surface is grass, with no trees, rocks, hills, rivers, lakes, structures or biome changes.
+- Infinite chunk streaming: 16 × 16 chunks are generated around the player and unloaded behind them to bound memory use.
+- A four-block-deep grass-only ground layer, so the field remains continuous while walking and jumping.
+- Four deterministic grass blades per surface block, with subtle green variation.
+- Vertex-animated wind: coherent gust waves travel across the grass, with stronger motion during rain.
+- Grass is instanced per chunk, keeping moving vegetation to one draw call per chunk.
+- Existing first-person movement, jumping, camera modes, HUD, inventory and local saving remain available.
+- A new save namespace starts a clean meadow without overwriting the previous world save.
 
 ## Controls
 
@@ -125,7 +114,7 @@ World edits, player position, inventory, game mode, time and weather are stored 
 
 ## Development status
 
-This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass with 64×32 (2,048-pixel) per-species atlases: they do not yet have breeding, sounds, sophisticated collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, infinite chunk streaming beyond the current 12-chunk map, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
+This is an **alpha foundation**, not a feature-complete commercial sandbox. The current world is intentionally a grass-only infinite meadow; former terrain and creature systems are not instantiated in this build. The meadow uses instanced grass blades and GPU vertex animation for wind; multiplayer, audio, and full survival simulation remain unimplemented. Advanced survival simulation, complete recipe coverage, redstone, dimensions, infinite chunk streaming beyond the current 12-chunk map, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
 
 The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROADMAP.md).
 

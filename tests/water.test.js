@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {WaterSimulation} from "../src/fluid.js";
 import {BLOCK_MAP} from "../src/data.js";
-import {terrainSample,riverCenterAt,WATER_LEVEL} from "../src/terrain.js";
+import {terrainSample,WATER_LEVEL} from "../src/terrain.js";
 
 const key=(x,y,z)=>x+","+y+","+z;
 class FakeWorld{
@@ -168,40 +168,7 @@ test("generated non-source water initializes as supported and settled",()=>{
  assert.equal(fluid.levels.get(key(0,2,0)).falling,false);
 });
 
-test("legacy saves do not restore every natural river cell as an active source",()=>{
- const world=new FakeWorld();world.seed=20261109;
- let x=0,z=0;
- for(let candidate=-80;candidate<=80;candidate++){
-  const cz=Math.round(riverCenterAt(candidate,world.seed));
-  const sample=terrainSample(candidate,cz,world.seed);
-  if(sample.isWaterColumn&&!sample.waterSource){x=candidate;z=cz;break;}
- }
- world.set(x,WATER_LEVEL,z,"water");
- const fluid=new WaterSimulation(world);
- fluid.restoreSources([[x,WATER_LEVEL,z]]);
- assert.equal(fluid.exportSources().length,0);
- let legacyX=null,legacyZ=null;
- for(let candidate=-80;candidate<=80;candidate++){
-  const cz=Math.round(riverCenterAt(candidate,world.seed)),sample=terrainSample(candidate,cz,world.seed);
-  if(sample.isWaterColumn&&sample.waterSource){legacyX=candidate;legacyZ=cz;break;}
- }
- assert.notEqual(legacyX,null);
- world.set(legacyX,WATER_LEVEL+1,legacyZ,"water");
- fluid.restoreSources([[legacyX,WATER_LEVEL+1,legacyZ]]);
- assert.ok(!fluid.exportSources().some(([sx,sy,sz])=>sx===legacyX&&sy===WATER_LEVEL+1&&sz===legacyZ));
- world.set(90,WATER_LEVEL,90,"water");
- fluid.restoreSources([[90,WATER_LEVEL,90]]);
- assert.ok(fluid.exportSources().some(([sx,sy,sz])=>sx===90&&sy===WATER_LEVEL&&sz===90));
-});
-
-test("generated natural water is represented by real water blocks up to the visible waterline",()=>{
- const world=new FakeWorld();world.seed=20261109;
- for(let x=-96;x<=96;x++)for(let z=-96;z<=96;z++){
-  const sample=terrainSample(x,z,world.seed);
-  if(!sample.isWaterColumn)continue;
-  const height=sample.height;
-  for(let y=height+1;y<=WATER_LEVEL;y++)world.set(x,y,z,"water");
- }
- let count=0;for(const id of world.blocks.values())if(id==="water")count++;
- assert.ok(count>1000,"the generated basin should contain visible water cells");
+test("the infinite meadow does not create any natural water columns",()=>{
+ const sample=terrainSample(900000,-1200000,20261109);
+ assert.equal(sample.surface,"grass");assert.equal(sample.isWaterColumn,false);assert.equal(sample.waterSource,false);
 });
