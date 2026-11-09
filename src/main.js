@@ -10,8 +10,13 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8bc7e7);
 scene.fog=new THREE.Fog(0x8bc7e7,38,82);
 const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,140);
+scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
+const armRig=new THREE.Group();armRig.position.set(.43,-.48,-.78);camera.add(armRig);
+const sleeve=new THREE.Mesh(new THREE.BoxGeometry(.27,.42,.28),new THREE.MeshLambertMaterial({color:0x527d91}));
+const hand=new THREE.Mesh(new THREE.BoxGeometry(.25,.25,.27),new THREE.MeshLambertMaterial({color:0xc99b78}));
+sleeve.position.y=-.1;hand.position.set(0,-.34,.015);armRig.add(sleeve,hand);armRig.visible=false;
 const skyLight=new THREE.HemisphereLight(0xd9efff,0x66704c,1.7);scene.add(skyLight);
 const sun=new THREE.DirectionalLight(0xffefca,2.1);sun.position.set(-28,42,18);scene.add(sun);
 let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival");
@@ -241,6 +246,13 @@ function tick(now){
  requestAnimationFrame(tick);const dt=Math.min((now-(tick.last||now))/1000,.05);tick.last=now;
  if(mobs)mobs.update(dt,now/1000);
  if(!started){const orbit=now*.000045;camera.position.set(Math.cos(orbit)*33,12+Math.sin(orbit*.7)*1.2,Math.sin(orbit)*33);camera.lookAt(0,4,0)}
+ armRig.visible=started&&locked&&!uiOpen;
+ if(armRig.visible){
+  const moving=!!(keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD);
+  const stride=moving?Math.sin(now*.009)*.14:Math.sin(now*.0017)*.012;
+  armRig.rotation.x=leftDown?-.72+Math.sin(now*.018)*.06:stride;
+  armRig.rotation.z=moving?Math.cos(now*.009)*.06:0;
+ }
  if(started&&locked){
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0),side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const dir=new THREE.Vector3(side,0,-forward);if(dir.lengthSq()>0)dir.normalize().applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
