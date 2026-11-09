@@ -118,3 +118,25 @@ test("water sources refuse to overwrite solid blocks",()=>{
  const world=new FakeWorld();world.set(0,1,0,"stone");const fluid=new WaterSimulation(world);
  assert.equal(fluid.addSource(0,1,0),false);assert.equal(world.get(0,1,0),"stone");
 });
+
+test("a supported pool settles into horizontal flow and preserves its source",()=>{
+ const world=new FakeWorld();makeFloor(world,-12,12);
+ const fluid=new WaterSimulation(world,{tickInterval:.1,updateBudget:1000});
+ fluid.addSource(0,1,0);
+ for(let i=0;i<14;i++)fluid.update(.1);
+ assert.equal(world.get(0,1,0),"water");
+ assert.equal(fluid.levels.get(key(0,1,0)).source,true);
+ assert.equal(fluid.levels.get(key(0,1,0)).falling,false);
+ assert.ok(fluid.levels.get(key(1,1,0)).settled);
+ assert.equal(world.get(1,0,0),"stone");
+});
+test("water above an open cell falls and becomes supported at the next floor",()=>{
+ const world=new FakeWorld();world.set(0,0,0,"stone");
+ const fluid=new WaterSimulation(world,{tickInterval:.1,updateBudget:100});
+ fluid.addSource(0,2,0);fluid.update(.1);
+ assert.equal(world.get(0,1,0),"water");
+ assert.equal(fluid.levels.get(key(0,1,0)).falling,true);
+ fluid.update(.1);
+ assert.equal(world.get(0,1,0),"water");
+ assert.equal(fluid.levels.get(key(0,1,0)).settled,true);
+});
