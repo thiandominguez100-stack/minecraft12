@@ -1,5 +1,10 @@
 const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z);
 const SURFACE_OFFSET=.012,GRID=3;
+export function waterWaveHeight(x,z,time,weight=1){
+ const broad=Math.sin(x*.82+time*1.18)*Math.cos(z*.73-time*.91);
+ const ripple=Math.sin((x+z)*.57-time*.72);
+ return weight*(broad*.024+ripple*.009);
+}
 export function waterSurfaceY(world,x,y,z){return y+.5+SURFACE_OFFSET;}
 export function waterCornerY(world,cx,y,cz){return y+.5+SURFACE_OFFSET;}
 export function buildWaterSurface(world,cells){
