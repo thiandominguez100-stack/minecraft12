@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP,ITEMS,ITEM_MAP,RECIPES,clamp} from "./data.js";
 import {VoxelWorld} from "./world.js";
 import {MobSystem} from "./mobs.js";
+import {FirstPersonPhysics} from "./physics.js";
 import {Inventory} from "./inventory.js";
 import {saveGame,loadGame,deleteSave} from "./storage.js";
 
@@ -23,10 +24,11 @@ let world=new VoxelWorld(scene,20261109),inventory=new Inventory("survival");
 let mobs=new MobSystem(scene,world,world.seed);
 camera.position.set(31,13,31);camera.lookAt(0,4,0);
 let mode="survival",started=false,locked=false,uiOpen=false,dayTime=.25,weather="clear",health=20,hunger=20,selectedTab="items";
-let yaw=0,pitch=0,velocity=new THREE.Vector3(),onGround=false,spaceWasDown=false;
+let yaw=0,pitch=0,velocity=new THREE.Vector3();
+const physics=new FirstPersonPhysics();
 const keys={},ray=new THREE.Raycaster();ray.far=6;
 let leftDown=false,miningKey="",miningProgress=0,lastSave=0,lastHunger=0,toastTimer=0;
-let targetHit=null,toastTimerId=0;
+let targetHit=null,targetMob=null,toastTimerId=0;
 const rainCount=360,rainPositions=new Float32Array(rainCount*3);
 for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*42;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*42}
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
@@ -36,7 +38,58 @@ function notify(message){const el=$("toast");el.textContent=message;el.classList
 function setOverlay(id,show){$(id).style.display=show?"flex":"none";uiOpen=show||["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex");if(show&&document.pointerLockElement)document.exitPointerLock()}
 function requestLock(){if(started&&!uiOpen)renderer.domElement.requestPointerLock()}
 function itemColor(id){const d=ITEM_MAP[id]||BLOCK_MAP[id];return d?.color??0xffffff}
-function itemIcon(id){return '<div class="item-icon" style="background:#'+itemColor(id).toString(16).padStart(6,"0")+'"></div>'}
+function itemIcon(id){
+ const canvas=document.createElement("canvas");canvas.width=16;canvas.height=16;
+ const ctx=canvas.getContext("2d"),def=ITEM_MAP[id]||BLOCK_MAP[id];
+ const base=itemColor(id),hex=n=>"#"+n.toString(16).padStart(6,"0");
+ const shade=(n,f)=>{const c=new THREE.Color(n);c.multiplyScalar(f);return c.getHex()};
+ const px=(x,y,color,w=1,h=1)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h)};
+ const color=hex(base),dark=hex(shade(base,.55)),light=hex(shade(base,1.35));
+ const rand=(x,y)=>{let n=(x*374761393+y*668265263+base)|0;n=(n^(n>>>13))*1274126177;return ((n^(n>>>16))>>>0)/4294967295};
+ if(def?.kind==="tool"||id==="stick"){
+  for(let i=0;i<10;i++)px(3+i,13-i,"#80532f",2,2);
+  if(id.includes("pickaxe")){
+   for(let i=0;i<10;i++)px(5+i,4+(i>4?i-4:0),"#b8c1c8",2,2);
+   px(5,3,"#e0e5e7",4,2);px(12,6,"#7f8a91",3,2);
+  }else if(id.includes("axe")){
+   px(8,2,"#c8d0d5",4,2);px(6,3,"#dce2e5",6,2);px(5,5,"#8a969e",4,3);
+  }else if(id.includes("shovel")){
+   px(10,1,"#c8d1d6",3,3);px(9,3,"#aebac1",4,3);
+  }else if(id.includes("sword")){
+   for(let i=0;i<10;i++)px(3+i,3+(9-i),"#dce6ec",2,2);
+   px(4,10,"#9caab2",5,2);px(3,12,"#7d4b2c",3,3);
+  }
+ }else if(def?.kind==="food"){
+  if(id.includes("apple")){
+   px(4,4,"#b62e31",8,8);px(3,6,"#d84443",10,6);px(6,2,"#80502d",2,3);px(8,1,"#65a64e",4,2);px(5,6,"#ff8a75",2,2);
+  }else if(id.includes("bread")){
+   px(3,5,"#9a642e",10,7);px(4,3,"#e8b85f",8,9);px(6,4,"#f6d88a",5,2);px(5,8,"#c58b42",2,2);
+  }else{
+   px(3,4,color,10,8);px(4,3,light,7,2);px(5,9,dark,6,2);px(6,6,"#edb19a",3,2);
+  }
+ }else if(id==="stick"||id==="coal"||id==="raw_iron"||id==="raw_gold"||id==="iron_ingot"||id==="gold_ingot"||id==="diamond"||id==="wool"){
+  if(id==="coal"){px(4,5,"#17191c",8,7);px(5,4,"#45484a",5,2)}
+  else if(id.includes("ingot")){px(3,6,color,10,5);px(4,5,light,8,2);px(4,11,dark,8,2)}
+  else if(id==="diamond"){px(6,2,"#a8fff1",4,2);px(4,4,"#4edacb",8,4);px(5,8,"#27aeb0",6,4);px(7,12,"#197a89",3,2)}
+  else if(id==="wool"){px(3,4,color,10,8);px(5,2,light,6,3);px(2,7,light,2,4);px(6,11,dark,6,2)}
+  else{px(4,4,color,8,8);px(5,3,light,5,2);px(5,9,dark,7,2)}
+ }else{
+  px(1,1,dark,14,14);px(2,2,color,12,12);
+  for(let y=2;y<14;y++)for(let x=2;x<14;x++)if(rand(x,y)>.78)px(x,y,light);
+  if(id==="grass"){px(2,2,"#65a83f",12,4);for(let x=3;x<14;x+=3)px(x,1,"#8acb58",1,2);px(2,6,"#89613e",12,8)}
+  if(id==="oak_log"){px(5,2,"#613f27",2,12);px(10,2,"#754a2c",1,12);px(3,4,"#d0a36b",2,1)}
+  if(id==="leaves"){for(let i=0;i<28;i++)px(2+Math.floor(rand(i,1)*12),2+Math.floor(rand(i,2)*12),i%3?"#4b8a3d":"#79b94f")}
+  if(id.endsWith("_ore")){const ore=hex(BLOCK_MAP[id]?.accent||0xffffff);for(let i=0;i<8;i++)px(2+Math.floor(rand(i,3)*12),2+Math.floor(rand(i,4)*12),ore,2,1)}
+  if(id==="sand"){for(let i=0;i<18;i++)px(2+Math.floor(rand(i,5)*12),2+Math.floor(rand(i,6)*12),"#f0d99f")}
+  if(id==="water"){for(let y=3;y<14;y+=4)px(2,y,"#6fb9e7",12,1)}
+  if(id==="glass"){ctx.clearRect(0,0,16,16);px(2,2,"#9de6ef",12,1);px(2,13,"#9de6ef",12,1);px(2,2,"#9de6ef",1,12);px(13,2,"#9de6ef",1,12);px(4,4,"#d6fbff",2,1)}
+  if(id==="torch"){ctx.clearRect(0,0,16,16);px(7,6,"#f6c54f",3,4);px(8,9,"#a96c34",2,6);px(6,3,"#ffef9a",5,3)}
+  if(id==="crafting_table"){px(2,2,"#7d4f2e",12,4);px(3,3,"#deb16d",4,2);px(9,3,"#deb16d",4,2);px(3,8,"#8d5a32",10,5);px(4,9,"#d39a55",2,2)}
+  if(id==="furnace"){px(4,4,"#24282c",8,8);px(5,5,"#c4c7c5",6,2);px(6,9,"#ef9a42",4,2)}
+  if(id==="chest"){px(2,4,"#8d5a2d",12,9);px(2,4,"#d8a454",12,3);px(7,7,"#e3c15e",3,3);px(8,8,"#75502f",1,2)}
+ }
+ return '<img class="item-icon" alt="" src="'+canvas.toDataURL("image/png")+'">';
+}
 function renderHotbar(){
  const el=$("hotbar");el.innerHTML="";
  for(let i=0;i<9;i++){const s=inventory.slots[i],div=document.createElement("div");div.className="slot"+(i===inventory.selected?" selected":"");div.innerHTML='<span class="key">'+(i+1)+'</span>'+(s?itemIcon(s.id):"")+(s&&s.count>1?'<span class="stack">'+(mode==="creative"?"∞":s.count)+'</span>':"");
@@ -70,13 +123,14 @@ async function replaceWorld(seed,changes=[]){
 }
 async function newWorld(nextMode){
  started=false;leftDown=false;miningProgress=0;
+ physics.reset();velocity.set(0,0,0);
  const seed=Math.floor(100000+Math.random()*900000000);
  await replaceWorld(seed);
  inventory=new Inventory(nextMode);setMode(nextMode);
  if(nextMode==="creative"){ITEMS.slice(0,36).forEach((it,i)=>inventory.slots[i]={id:it.id,count:it.kind==="tool"?1:64,...(it.kind==="tool"?{durability:it.durability}:{})})}
  else{inventory.add("apple",2);inventory.add("bread",3)}
  const h=world.highest(0,0);camera.position.set(0,h+2.12,0);camera.rotation.set(0,0,0);yaw=0;pitch=0;
- velocity.set(0,0,0);health=20;hunger=20;dayTime=.25;weather="clear";started=true;
+ velocity.set(0,0,0);physics.reset();physics.onGround=true;health=20;hunger=20;dayTime=.25;weather="clear";started=true;
  $("start-screen").style.display="none";$("hud").classList.remove("menu-hidden");setOverlay("pause-overlay",false);renderHotbar();renderInventory();updateSky();notify("Mundo creado · Semilla "+world.seed);save();
 }
 async function loadIntoGame(data){
@@ -84,6 +138,7 @@ async function loadIntoGame(data){
  started=false;
  await replaceWorld(Number(data.seed)||20261109,data.changes||[]);
  inventory=new Inventory(data.mode||"survival");inventory.restore(data.inventory||[]);inventory.selected=clamp(data.selected||0,0,8);
+ physics.reset();velocity.set(0,0,0);
  setMode(data.mode==="creative"?"creative":"survival");
  if(Array.isArray(data.position)&&data.position.length===3)camera.position.set(...data.position);else camera.position.set(0,world.highest(0,0)+2.12,0);
  camera.rotation.set(0,0,0);yaw=0;pitch=0;
@@ -96,6 +151,24 @@ function save(){
  if(ok)notify("Mundo guardado en este navegador.");else notify("No se pudo guardar. Comprueba el almacenamiento del navegador.");
 }
 function currentTarget(){ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,false);return hits.length?hits[0]:null}
+function updateAim(){
+ ray.setFromCamera(new THREE.Vector2(0,0),camera);
+ const blocks=ray.intersectObjects(world.group.children,false),blockHit=blocks.length?blocks[0]:null;
+ const creature=mobs?.pick(ray);
+ if(creature&&(!blockHit||creature.distance<blockHit.distance)){targetMob=creature.mob;targetHit=null}
+ else{targetMob=null;targetHit=blockHit}
+}
+function hitMob(mob){
+ if(!mob)return;
+ const direction=new THREE.Vector3(mob.root.position.x-camera.position.x,0,mob.root.position.z-camera.position.z);
+ const result=mobs.hit(mob,direction);if(!result)return;
+ if(result.drop&&mode==="survival"){
+  const rest=inventory.add(result.drop,1);
+  if(rest)notify("Inventario lleno: no se recogió el objeto.");
+  else notify("Criatura derrotada · "+(ITEM_MAP[result.drop]?.name||result.drop)+" recogido.");
+ }else notify("Golpe acertado · "+(mob.type==="sheep"?"Oveja":mob.type==="cow"?"Vaca":"Gallina")+" · "+result.hp+"/"+(result.maxHp||0)+" de vida.");
+ renderHotbar();renderInventory();
+}
 function heldItem(){return inventory.selectedStack?ITEM_MAP[inventory.selectedStack.id]:null}
 function canPlaceAt(x,y,z){const id=world.get(x,y,z);if(id)return false;const p=camera.position;if(Math.abs(p.x-x)<.8&&Math.abs(p.z-z)<.8&&p.y-1.62<y+.9&&p.y+.15>y-.5)return false;return true}
 function useSelected(){
@@ -120,8 +193,13 @@ function breakBlock(b){
  renderHotbar();renderInventory();
 }
 function mineTarget(dt){
- const hit=targetHit,b=hit?world.resolveHit(hit):null;
  const label=$("target-label");
+ if(targetMob){
+  const name=targetMob.type==="sheep"?"Oveja":targetMob.type==="cow"?"Vaca":"Gallina";
+  label.textContent=name+" · "+targetMob.hp+"/"+targetMob.maxHp+" ♥";
+  label.style.opacity="1";miningKey="";miningProgress=0;return;
+ }
+ const hit=targetHit,b=hit?world.resolveHit(hit):null;
  if(!b){label.style.opacity="0";miningKey="";miningProgress=0;return}
  const def=BLOCK_MAP[b.id];label.textContent=(def?.name||b.id)+(mode==="survival"?" · "+Math.round(miningProgress*100)+"%":"");label.style.opacity="1";
  if(!leftDown)return;
@@ -203,7 +281,7 @@ function togglePause(){if(!started)return;setOverlay("pause-overlay",true)}
 function hideOverlay(id){$(id).style.display="none";uiOpen=["inventory-overlay","command-overlay","pause-overlay"].some(other=>$(other).style.display==="flex")}
 renderer.domElement.addEventListener("click",()=>{if(started&&!uiOpen&&!locked)requestLock()});
 renderer.domElement.addEventListener("wheel",e=>{if(!locked)return;inventory.selected=(inventory.selected+(e.deltaY>0?1:8))%9;renderHotbar();renderInventory()},{passive:true});
-renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;miningProgress=0;miningKey=""}if(e.button===2)e.preventDefault()});
+renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){leftDown=true;miningProgress=0;miningKey="";if(targetMob)hitMob(targetMob)}if(e.button===2)e.preventDefault()});
 renderer.domElement.addEventListener("mouseup",e=>{if(e.button===0)leftDown=false;if(e.button===2&&locked)useSelected()});
 renderer.domElement.addEventListener("contextmenu",e=>e.preventDefault());
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement});
@@ -223,7 +301,7 @@ document.addEventListener("keydown",e=>{
  if(e.code==="KeyE"&&!e.repeat&&started){if($("inventory-overlay").style.display==="flex")hideOverlay("inventory-overlay");else openInventory()}
  if(e.code==="KeyT"&&!e.repeat&&started)openCommands();
  if(/^Digit[1-9]$/.test(e.code)){inventory.selected=Number(e.code.slice(5))-1;renderHotbar();renderInventory()}
- if(e.code==="Space"&&mode==="survival"&&onGround&&!e.repeat){velocity.y=8.1;onGround=false}
+ if(e.code==="Space"&&mode==="survival"&&started&&!e.repeat)physics.queueJump()
  if(e.code==="KeyF"&&!e.repeat&&started)save();
 });
 document.addEventListener("keyup",e=>{keys[e.code]=false});
@@ -255,20 +333,20 @@ function tick(now){
  }
  if(started&&locked){
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0),side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
-  const dir=new THREE.Vector3(side,0,-forward);if(dir.lengthSq()>0)dir.normalize().applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
-  let speed=mode==="creative"?8.5:keys.ControlLeft?7:keys.ShiftLeft?2.2:4.8;
-  camera.position.x+=dir.x*speed*dt;
-  if(mode!=="creative"&&world.collides(camera.position))camera.position.x-=dir.x*speed*dt;
-  camera.position.z+=dir.z*speed*dt;
-  if(mode!=="creative"&&world.collides(camera.position))camera.position.z-=dir.z*speed*dt;
-  if(mode==="creative"){if(keys.Space)camera.position.y+=speed*dt;if(keys.ShiftLeft)camera.position.y-=speed*dt;velocity.y=0}
-  else{
-   velocity.y-=22*dt;const oldY=camera.position.y;camera.position.y+=velocity.y*dt;
-   if(world.collides(camera.position)){if(velocity.y<0){const blockY=Math.floor((camera.position.y-1.62)+.5);camera.position.y=blockY+.5+1.62;onGround=true}else camera.position.y=oldY;velocity.y=0}
-   else onGround=false;
-   if(camera.position.y< -12){camera.position.set(0,world.highest(0,0)+3,0);health=clamp(health-4,0,20);updateVitals();notify("Caída: has regresado al punto de aparición.")}
+  const dir=new THREE.Vector3(side,0,-forward);if(dir.lengthSq()>1)dir.normalize();dir.applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
+  const speed=mode==="creative"?8.5:keys.ControlLeft?7:keys.ShiftLeft?2.2:4.8;
+  if(mode==="creative"){
+   camera.position.x+=dir.x*speed*dt;camera.position.z+=dir.z*speed*dt;
+   if(keys.Space)camera.position.y+=speed*dt;if(keys.ShiftLeft)camera.position.y-=speed*dt;
+   velocity.set(0,0,0);
+  }else{
+   physics.update(world,camera.position,velocity,{x:dir.x,z:dir.z,speed},dt);
+   if(camera.position.y< -12){
+    camera.position.set(0,world.highest(0,0)+2.12,0);velocity.set(0,0,0);physics.reset();physics.onGround=true;
+    health=clamp(health-4,0,20);updateVitals();notify("Caída: has regresado al punto de aparición.");
+   }
   }
-  targetHit=currentTarget();mineTarget(dt);
+  updateAim();mineTarget(dt);
   $("coords").textContent="X: "+camera.position.x.toFixed(1)+" · Y: "+camera.position.y.toFixed(1)+" · Z: "+camera.position.z.toFixed(1);
   if(mode==="survival"&&Date.now()-lastHunger>45000&&hunger>0){hunger=Math.max(0,hunger-1);lastHunger=Date.now();if(hunger===0)health=Math.max(1,health-1);updateVitals()}
   dayTime=(dayTime+dt/900)%1;updateSky();
