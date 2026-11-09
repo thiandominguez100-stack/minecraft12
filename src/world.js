@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {BLOCKS,BLOCK_MAP} from "./data.js";
+import {buildWaterSurface,waterSurfaceY} from "./water-surface.js";
 import {
   CHUNK_SIZE,CHUNKS_X,CHUNKS_Z,TOTAL_CHUNKS,WORLD_MIN_X,WORLD_MIN_Z,
   WORLD_WIDTH,WORLD_DEPTH,WORLD_MAX_X,WORLD_MAX_Z,WATER_LEVEL,
@@ -7,6 +8,24 @@ import {
 } from "./terrain.js";
 
 const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z);
+
+function makeWaterTexture(){
+  const canvas=document.createElement("canvas");canvas.width=16;canvas.height=16;
+  const ctx=canvas.getContext("2d",{alpha:false});
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+    const a=Math.sin((x/16)*Math.PI*2+(y/16)*Math.PI*2);
+    const b=Math.cos((x/16)*Math.PI*4-(y/16)*Math.PI*2);
+    const tone=.91+a*.075+b*.035;
+    const color=new THREE.Color(0x438fb9).multiplyScalar(tone);
+    if(a+b>1.05)color.lerp(new THREE.Color(0x8bc8e5),.24);
+    ctx.fillStyle="#"+color.getHexString();ctx.fillRect(x,y,1,1);
+  }
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.LinearFilter;
+  texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=false;
+  texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+  return texture;
+}
 
 function makeTexture(def,face="side"){
   const canvas=document.createElement("canvas");canvas.width=16;canvas.height=16;
@@ -64,7 +83,7 @@ function makeTexture(def,face="side"){
 export class VoxelWorld{
   constructor(scene,seed=20261109,options={}){
     this.scene=scene;this.seed=seed;
-    this.blocks=new Map();this.base=new Map();this.changes=new Map();this.waterSources=new Set();
+    this.blocks=new Map();this.base=new Map();this.changes=new Map();this.waterSources=new Set();this.waterStates=new Map();
     this.group=new THREE.Group();this.group.name="WorldChunkRoot";scene.add(this.group);
     this.geometry=new THREE.BoxGeometry(1,1,1);
     this.materials=new Map();this.chunkGroups=new Map();this.chunkBlocks=new Map();
@@ -79,10 +98,11 @@ export class VoxelWorld{
       }));
       this.materials.set(def.id,materials);
     }
-    const waterTexture=makeTexture(BLOCK_MAP.water,"top");
-    waterTexture.wrapS=THREE.RepeatWrapping;waterTexture.wrapT=THREE.RepeatWrapping;waterTexture.needsUpdate=true;
-    this.waterGeometry=new THREE.BoxGeometry(.998,.998,.998);
-    this.waterMaterial=new THREE.MeshLambertMaterial({map:waterTexture,color:0xc5eaff,transparent:true,opacity:.64,depthWrite:false,side:THREE.DoubleSide});
+    const waterTexture=makeWaterTexture();
+    this.waterMaterial=new THREE.MeshLambertMaterial({
+      map:waterTexture,color:0xffffff,transparent:true,opacity:.72,
+      depthWrite:false,side:THREE.DoubleSide,vertexColors:true
+    });
     this.waterFlowTime=0;
     if(!options.defer)this.generate();
   }
@@ -254,15 +274,18 @@ export class VoxelWorld{
     for(const [dx,dz] of horizontal){
       const x=Math.floor(pos.x+dx+.5),z=Math.floor(pos.z+dz+.5);
       for(const fraction of vertical){
-        const y=Math.floor(feet+height*fraction+.5);
-        if(this.get(x,y,z)==="water")wet++;
+        const sampleY=feet+height*fraction;
+        const y=Math.floor(sampleY+.5);
+        const surface=waterSurfaceY(this,x,y,z);
+        if(this.get(x,y,z)==="water"&&sampleY<=surface)wet++;
         total++;
       }
     }
     return total?wet/total:0;
   }
   isEyeUnderwater(pos){
-    return this.get(Math.floor(pos.x+.5),Math.floor(pos.y+.5),Math.floor(pos.z+.5))==="water";
+    const x=Math.floor(pos.x+.5),y=Math.floor(pos.y+.5),z=Math.floor(pos.z+.5);
+    return this.get(x,y,z)==="water"&&pos.y<=waterSurfaceY(this,x,y,z);
   }
   highest(x,z){for(let y=32;y>=-5;y--){const id=this.get(x,y,z);if(id&&this.isSolid(x,y,z))return y;}return 2;}
   collides(pos,r=.29,height=1.8){
@@ -301,7 +324,10 @@ export class VoxelWorld{
   }
   rebuildChunk(ix,iz){
     const chunkKey=ix+","+iz,previous=this.chunkGroups.get(chunkKey);
-    if(previous){this.group.remove(previous);previous.clear();}
+    if(previous){
+      previous.traverse(object=>{if(object.userData?.dynamicWater)object.geometry.dispose();});
+      this.group.remove(previous);previous.clear();
+    }
     const chunkGroup=new THREE.Group();chunkGroup.name="Chunk "+ix+","+iz;
     chunkGroup.userData={chunkX:ix,chunkZ:iz,blockSize:CHUNK_SIZE};
     const entries=this.chunkBlocks.get(chunkKey)||new Map(),grouped=new Map(),waterCoords=[];
@@ -318,12 +344,18 @@ export class VoxelWorld{
       mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();chunkGroup.add(mesh);
     }
     if(waterCoords.length){
-      const waterMesh=new THREE.InstancedMesh(this.waterGeometry,this.waterMaterial,waterCoords.length);
-      waterMesh.userData.blockId="water";waterMesh.userData.coords=waterCoords;waterMesh.renderOrder=2;
-      waterMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-      const waterDummy=new THREE.Object3D();
-      waterCoords.forEach((position,index)=>{waterDummy.position.set(position[0],position[1],position[2]);waterDummy.updateMatrix();waterMesh.setMatrixAt(index,waterDummy.matrix);});
-      waterMesh.instanceMatrix.needsUpdate=true;waterMesh.computeBoundingSphere();chunkGroup.add(waterMesh);
+      const surface=buildWaterSurface(this,waterCoords);
+      if(surface.positions.length){
+        const geometry=new THREE.BufferGeometry();
+        geometry.setAttribute("position",new THREE.Float32BufferAttribute(surface.positions,3));
+        geometry.setAttribute("uv",new THREE.Float32BufferAttribute(surface.uvs,2));
+        geometry.setAttribute("color",new THREE.Float32BufferAttribute(surface.colors,3));
+        geometry.setIndex(surface.indices);
+        geometry.computeVertexNormals();geometry.computeBoundingSphere();
+        const waterMesh=new THREE.Mesh(geometry,this.waterMaterial);
+        waterMesh.userData={blockId:"water",dynamicWater:true,topFaces:surface.topFaces,sideFaces:surface.sideFaces};
+        waterMesh.renderOrder=2;chunkGroup.add(waterMesh);
+      }
     }
     this.chunkGroups.set(chunkKey,chunkGroup);this.group.add(chunkGroup);
   }
@@ -349,6 +381,7 @@ export class VoxelWorld{
       const [x,y,z]=key.split(",").map(Number);
       if(!isInsideWorld(x,z)||y<-5||y>32||id&&!BLOCK_MAP[id])continue;
       if(id)this.blocks.set(key,id);else this.blocks.delete(key);
+      if(id!=="water")this.waterSources.delete(key);
       this.changes.set(key,id);
     }
     this.rebuild();

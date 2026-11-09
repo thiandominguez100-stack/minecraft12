@@ -153,7 +153,7 @@ function save(){
  const ok=saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger,waterSources:fluid.exportSources()});
  if(ok)notify("Mundo guardado en este navegador.");else notify("No se pudo guardar. Comprueba el almacenamiento del navegador.");
 }
-function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,true);return hits.length?hits[0]:null}
+function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,true).filter(hit=>hit.object.userData.blockId!=="water");return hits.length?hits[0]:null}
 function updateAim(){
  scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
  ray.setFromCamera(new THREE.Vector2(0,0),camera);
@@ -174,7 +174,13 @@ function hitMob(mob){
  renderHotbar();renderInventory();
 }
 function heldItem(){return inventory.selectedStack?ITEM_MAP[inventory.selectedStack.id]:null}
-function canPlaceAt(x,y,z){const id=world.get(x,y,z);if(id)return false;const p=camera.position;if(Math.abs(p.x-x)<.8&&Math.abs(p.z-z)<.8&&p.y-1.62<y+.9&&p.y+.15>y-.5)return false;return true}
+function editBlock(x,y,z,id){
+ const previous=world.get(x,y,z);
+ const ok=world.set(x,y,z,id,false);
+ if(ok)fluid.onBlocksChanged([[x,y,z,previous,id]]);
+ return ok;
+}
+function canPlaceAt(x,y,z){const id=world.get(x,y,z);if(id&&id!=="water")return false;const p=camera.position;if(Math.abs(p.x-x)<.8&&Math.abs(p.z-z)<.8&&p.y-1.62<y+.9&&p.y+.15>y-.5)return false;return true}
 function useSelected(){
  const stack=inventory.selectedStack;if(!stack)return;
  const def=ITEM_MAP[stack.id];
@@ -185,11 +191,11 @@ function useSelected(){
  const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);const x=b.x+Math.round(normal.x),y=b.y+Math.round(normal.y),z=b.z+Math.round(normal.z);
  if(!canPlaceAt(x,y,z))return;
  if(mode==="survival"&&!inventory.count(stack.id))return;
- if(stack.id==="water")fluid.addSource(x,y,z);else world.set(x,y,z,stack.id);if(mode==="survival")inventory.consumeSelected();renderHotbar();
+ const placed=stack.id==="water"?fluid.addSource(x,y,z):editBlock(x,y,z,stack.id);if(!placed)return;if(mode==="survival")inventory.consumeSelected();renderHotbar();
 }
 function breakBlock(b){
  const def=BLOCK_MAP[b.id];if(!def||def.hardness<0)return;
- world.set(b.x,b.y,b.z,null);
+ editBlock(b.x,b.y,b.z,null);
  if(mode==="survival"&&def.drop){const held=heldItem(),hasTool=held?.tool===def.tool;const needsTool=!!def.tool;const harvest=!needsTool||hasTool;
   if(harvest){const rest=inventory.add(def.drop,1);if(rest)notify("Inventario lleno: no se recogió "+(ITEM_MAP[def.drop]?.name||def.drop));}
   if(hasTool)inventory.damageSelected(1);
@@ -272,8 +278,8 @@ function runCommand(raw){
  case"time":if(args[0]==="set"&&["day","night"].includes(args[1])){setTime(args[1]);commandOutput("Hora actualizada.")}else commandOutput("Uso: /time set day|night");break;
  case"weather":setWeather(args[0]);commandOutput("Clima: "+weather);break;
  case"tp":if(args.length>=3&&args.slice(0,3).every(v=>Number.isFinite(Number(v)))){camera.position.set(Number(args[0]),Number(args[1]),Number(args[2]));velocity.set(0,0,0);commandOutput("Teletransporte realizado.")}else commandOutput("Uso: /tp x y z");break;
- case"setblock":if(args.length>=4){const [x,y,z]=args.slice(0,3).map(Number),id=args[3];if([x,y,z].every(Number.isFinite)&&BLOCK_MAP[id]){if(id==="water")fluid.addSource(x,y,z);else world.set(x,y,z,id);commandOutput("Bloque colocado.")}else commandOutput("Coordenadas o bloque inválidos.")}else commandOutput("Uso: /setblock x y z bloque");break;
- case"fill":if(args.length>=7){const v=args.slice(0,6).map(Number),id=args[6];if(v.every(Number.isFinite)&&BLOCK_MAP[id]){const min=v.slice(0,3).map(Math.floor),max=v.slice(3,6).map(Math.floor);let total=0;for(let x=Math.min(min[0],max[0]);x<=Math.max(min[0],max[0]);x++)for(let y=Math.min(min[1],max[1]);y<=Math.max(min[1],max[1]);y++)for(let z=Math.min(min[2],max[2]);z<=Math.max(min[2],max[2]);z++){if(total>=256)break;world.set(x,y,z,id,false);total++}world.rebuild();commandOutput("Bloques colocados: "+total+(total===256?" · límite de 256 por comando":""))}else commandOutput("Parámetros inválidos.")}else commandOutput("Uso: /fill x1 y1 z1 x2 y2 z2 bloque");break;
+ case"setblock":if(args.length>=4){const [x,y,z]=args.slice(0,3).map(Number),id=args[3];if([x,y,z].every(Number.isFinite)&&BLOCK_MAP[id]){const ok=id==="water"?fluid.addSource(x,y,z):editBlock(x,y,z,id);commandOutput(ok?"Bloque colocado.":"No se pudo colocar el bloque.")}else commandOutput("Coordenadas o bloque inválidos.")}else commandOutput("Uso: /setblock x y z bloque");break;
+ case"fill":if(args.length>=7){const v=args.slice(0,6).map(Number),id=args[6];if(v.every(Number.isFinite)&&BLOCK_MAP[id]){const min=v.slice(0,3).map(Math.floor),max=v.slice(3,6).map(Math.floor);let total=0;const edits=[];for(let x=Math.min(min[0],max[0]);x<=Math.max(min[0],max[0]);x++)for(let y=Math.min(min[1],max[1]);y<=Math.max(min[1],max[1]);y++)for(let z=Math.min(min[2],max[2]);z<=Math.max(min[2],max[2]);z++){if(total>=256)break;const previous=world.get(x,y,z);const ok=id==="water"?fluid.addSource(x,y,z,{rebuild:false,activate:false}):world.set(x,y,z,id,false);if(ok){edits.push([x,y,z,previous,id]);total++}}if(edits.length)fluid.onBlocksChanged(edits);commandOutput("Bloques colocados: "+total+(total===256?" · límite de 256 por comando":""))}else commandOutput("Parámetros inválidos.")}else commandOutput("Uso: /fill x1 y1 z1 x2 y2 z2 bloque");break;
  case"clear":inventory.slots=Array.from({length:36},()=>null);renderHotbar();renderInventory();commandOutput("Inventario vaciado.");break;
  case"save":save();commandOutput("Guardado solicitado.");break;
  case"seed":commandOutput("Semilla: "+world.seed);break;
@@ -335,8 +341,8 @@ function tick(now){
   armRig.rotation.x=leftDown?-.72+Math.sin(now*.018)*.06:stride;
   armRig.rotation.z=moving?Math.cos(now*.009)*.06:0;
  }
+ if(started&&!uiOpen){fluid.update(dt);world.updateWaterAnimation(dt)}
  if(started&&locked){
-  fluid.update(dt);world.updateWaterAnimation(dt);
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0),side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const dir=new THREE.Vector3(side,0,-forward);if(dir.lengthSq()>1)dir.normalize();dir.applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
   const speed=mode==="creative"?8.5:keys.ControlLeft?7:keys.ShiftLeft?2.2:4.8;

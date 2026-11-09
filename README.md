@@ -1,6 +1,6 @@
 # BlockWorld 3D
 
-**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.5.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
+**BlockWorld 3D** is an original browser-based voxel sandbox prototype. The current build is **Alpha 0.6.0**. It is inspired by the broad construction and exploration genre; it is not Minecraft and does not include Mojang's proprietary code or game assets.
 
 ## Play with GitHub Pages
 
@@ -98,10 +98,22 @@ World edits, player position, inventory, game mode, time and weather are stored 
 - Replaced the static, breakable water-block behavior with permanent, non-solid fluid sources.
 - Added discrete voxel flow: water falls vertically first, then spreads horizontally with a seven-cell level decay.
 - Fluid updates run in a bounded simulation budget and rebuild only chunks touched by new water.
-- Water is rendered through a dedicated translucent instanced mesh with scrolling pixel texture, rather than the ordinary solid-block batch.
+- Water uses a connected surface mesh: adjacent cells omit shared internal walls, share exact corner heights and only render exposed outer sides.
 - Added body-submersion sampling, buoyancy, water drag, horizontal swimming and a Space-key swim stroke.
 - Added an underwater blue camera tint when the player's eyes are below the water surface.
 - Water source coordinates are included in local save data and restored with the world.
+
+
+## Alpha 0.6.0 — connected water and live block reactions
+
+- Replaced per-cell water cubes with a connected mesh of top surfaces and exposed outer walls, eliminating internal seams between adjacent water cells.
+- Neighboring water cells share the same corner heights, blending flowing levels into continuous surfaces across block and chunk boundaries.
+- Flowing water has visible levels; vertical columns remain full-height and horizontal streams lower gradually.
+- Water textures are seamless and animated, with a translucent blue material and a separate underwater surface test.
+- The water mesh is excluded from block targeting, so it no longer blocks mining or placing other blocks behind it.
+- Breaking or placing blocks wakes connected water cells; disconnected flow is removed and the remaining water recalculates its paths from live sources.
+- Blocks can now be placed into flowing water, displacing that fluid; source cells overwritten by solids are removed from the source registry.
+- Bulk /fill edits trigger one fluid connectivity pass instead of rebuilding the whole world after each cell.
 
 ## Development status
 

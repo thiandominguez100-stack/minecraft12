@@ -72,3 +72,44 @@ test("source positions can be serialized and restored",()=>{
   const restored=new WaterSimulation(world);
   assert.deepEqual(restored.restoreSources([[5,2,1]]).exportSources(),[[2,3,-4],[5,2,1]]);
 });
+
+
+test("placing a solid barrier dries water that is no longer connected to a source",()=>{
+  const world=new FakeWorld();makeFloor(world,-2,6);
+  const fluid=new WaterSimulation(world);
+  fluid.addSource(0,1,0);
+  for(let x=1;x<=3;x++){
+    world.set(x,1,0,"water");
+    fluid.levels.set(key(x,1,0),{level:x,falling:false,source:false});
+  }
+  const previous=world.get(1,1,0);
+  world.set(1,1,0,"stone");
+  fluid.onBlocksChanged([[1,1,0,previous,"stone"]]);
+  assert.equal(world.get(0,1,0),"water");
+  assert.equal(world.get(1,1,0),"stone");
+  assert.equal(world.get(2,1,0),null);
+  assert.equal(world.get(3,1,0),null);
+});
+
+test("breaking a block under a source wakes the water and starts a fall",()=>{
+  const world=new FakeWorld();
+  world.set(0,0,0,"stone");
+  const fluid=new WaterSimulation(world,{tickInterval:.1,updateBudget:100});
+  fluid.addSource(0,1,0);
+  const previous=world.get(0,0,0);
+  world.set(0,0,0,null);
+  fluid.onBlocksChanged([[0,0,0,previous,null]]);
+  fluid.update(.1);
+  assert.equal(world.get(0,0,0),"water");
+});
+
+test("a source overwritten by a solid block is removed from the source registry",()=>{
+  const world=new FakeWorld();makeFloor(world,-2,4);
+  const fluid=new WaterSimulation(world);
+  fluid.addSource(0,1,0);
+  const previous=world.get(0,1,0);
+  world.set(0,1,0,"stone");
+  fluid.onBlocksChanged([[0,1,0,previous,"stone"]]);
+  assert.deepEqual(fluid.exportSources(),[]);
+  assert.equal(world.get(0,1,0),"stone");
+});
