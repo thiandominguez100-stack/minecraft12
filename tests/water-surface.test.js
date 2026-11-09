@@ -26,3 +26,12 @@ test("water below another water cell has no top face",()=>{
 test("water hides its side against solid blocks",()=>{
  const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(-1,1,0,"stone");assert.equal(buildWaterSurface(w,[[0,1,0]]).sideFaces,3);
 });
+
+test("a calm source pool keeps a level waterline and only flowing cells slope",()=>{
+ const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(1,1,0,"water");
+ w.waterSources.add(key(0,1,0));w.waterStates.set(key(0,1,0),{level:0,source:true,falling:false});
+ w.waterStates.set(key(1,1,0),{level:1,source:false,falling:false});
+ assert.equal(waterSurfaceY(w,0,1,0),1.5);assert.equal(waterSurfaceY(w,1,1,0),1.5);
+ w.waterStates.set(key(1,1,0),{level:5,source:false,falling:false});
+ assert.ok(waterSurfaceY(w,1,1,0)<waterSurfaceY(w,0,1,0));
+});
