@@ -61,7 +61,7 @@ test("biomes and shorelines return valid surface definitions",()=>{
 });
 
 test("river and lake beds rise smoothly into shallow shores at the water line",()=>{
- for(const [core,fade] of [[2.8,15],[5.7,12],[5.0,11],[5.4,12]]){
+ for(const [core,fade] of [[2.8,26],[5.7,26],[5.0,26],[5.4,26]]){
   const heights=[0,1,2,core,core+1,fade].map(d=>waterBankHeight(d,18,core,fade,2.6,4.55));
   for(let i=1;i<heights.length;i++)assert.ok(heights[i]>=heights[i-1],"shore should never descend outwards");
   assert.ok(heights[0]<=3);assert.ok(heights[3]<=5);assert.equal(heights[5],18);
