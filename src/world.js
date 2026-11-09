@@ -64,7 +64,7 @@ function makeTexture(def,face="side"){
 export class VoxelWorld{
   constructor(scene,seed=20261109,options={}){
     this.scene=scene;this.seed=seed;
-    this.blocks=new Map();this.base=new Map();this.changes=new Map();
+    this.blocks=new Map();this.base=new Map();this.changes=new Map();this.waterSources=new Set();
     this.group=new THREE.Group();this.group.name="WorldChunkRoot";scene.add(this.group);
     this.geometry=new THREE.BoxGeometry(1,1,1);
     this.materials=new Map();this.chunkGroups=new Map();this.chunkBlocks=new Map();
@@ -79,6 +79,11 @@ export class VoxelWorld{
       }));
       this.materials.set(def.id,materials);
     }
+    const waterTexture=makeTexture(BLOCK_MAP.water,"top");
+    waterTexture.wrapS=THREE.RepeatWrapping;waterTexture.wrapT=THREE.RepeatWrapping;
+    this.waterGeometry=new THREE.BoxGeometry(.998,.998,.998);
+    this.waterMaterial=new THREE.MeshLambertMaterial({map:waterTexture,color:0xc5eaff,transparent:true,opacity:.64,depthWrite:false,side:THREE.DoubleSide});
+    this.waterFlowTime=0;
     if(!options.defer)this.generate();
   }
 
@@ -107,11 +112,12 @@ export class VoxelWorld{
     }
     if(riverDistance<1.9||lakeDistance<5.6){
       for(let y=height+1;y<=WATER_LEVEL;y++)this.putBlock(x,y,z,"water");
+      if(height<WATER_LEVEL)this.waterSources.add(keyOf(x,WATER_LEVEL,z));
     }
   }
 
   generateTerrain(){
-    this.blocks.clear();
+    this.blocks.clear();this.waterSources.clear();
     for(let iz=0;iz<CHUNKS_Z;iz++)for(let ix=0;ix<CHUNKS_X;ix++){
       const startX=WORLD_MIN_X+ix*CHUNK_SIZE,startZ=WORLD_MIN_Z+iz*CHUNK_SIZE;
       for(let x=startX;x<startX+CHUNK_SIZE;x++)
@@ -240,6 +246,24 @@ export class VoxelWorld{
     if(!id)return false;
     return BLOCK_MAP[id]?.solid!==false&&id!=="water"&&id!=="leaves"&&id!=="torch";
   }
+  getSubmersion(pos,r=.29,height=1.8){
+    const feet=pos.y-1.62;
+    const horizontal=[[0,0],[-r*.8,-r*.8],[r*.8,-r*.8],[-r*.8,r*.8],[r*.8,r*.8]];
+    const vertical=[.1,.3,.5,.7,.9];
+    let wet=0,total=0;
+    for(const [dx,dz] of horizontal){
+      const x=Math.floor(pos.x+dx+.5),z=Math.floor(pos.z+dz+.5);
+      for(const fraction of vertical){
+        const y=Math.floor(feet+height*fraction+.5);
+        if(this.get(x,y,z)==="water")wet++;
+        total++;
+      }
+    }
+    return total?wet/total:0;
+  }
+  isEyeUnderwater(pos){
+    return this.get(Math.floor(pos.x+.5),Math.floor(pos.y+.5),Math.floor(pos.z+.5))==="water";
+  }
   highest(x,z){for(let y=32;y>=-5;y--){const id=this.get(x,y,z);if(id&&this.isSolid(x,y,z))return y;}return 2;}
   collides(pos,r=.29,height=1.8){
     const epsilon=1e-5,feet=pos.y-1.62,head=feet+height;
@@ -280,8 +304,9 @@ export class VoxelWorld{
     if(previous){this.group.remove(previous);previous.clear();}
     const chunkGroup=new THREE.Group();chunkGroup.name="Chunk "+ix+","+iz;
     chunkGroup.userData={chunkX:ix,chunkZ:iz,blockSize:CHUNK_SIZE};
-    const entries=this.chunkBlocks.get(chunkKey)||new Map(),grouped=new Map();
+    const entries=this.chunkBlocks.get(chunkKey)||new Map(),grouped=new Map(),waterCoords=[];
     for(const item of entries.values()){
+      if(item.id==="water"){waterCoords.push([item.x,item.y,item.z]);continue;}
       if(!grouped.has(item.id))grouped.set(item.id,[]);
       grouped.get(item.id).push([item.x,item.y,item.z]);
     }
@@ -292,7 +317,21 @@ export class VoxelWorld{
       coords.forEach((position,index)=>{dummy.position.set(position[0],position[1],position[2]);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
       mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();chunkGroup.add(mesh);
     }
+    if(waterCoords.length){
+      const waterMesh=new THREE.InstancedMesh(this.waterGeometry,this.waterMaterial,waterCoords.length);
+      waterMesh.userData.blockId="water";waterMesh.userData.coords=waterCoords;waterMesh.renderOrder=2;
+      waterMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      const waterDummy=new THREE.Object3D();
+      waterCoords.forEach((position,index)=>{waterDummy.position.set(position[0],position[1],position[2]);waterDummy.updateMatrix();waterMesh.setMatrixAt(index,waterDummy.matrix);});
+      waterMesh.instanceMatrix.needsUpdate=true;waterMesh.computeBoundingSphere();chunkGroup.add(waterMesh);
+    }
     this.chunkGroups.set(chunkKey,chunkGroup);this.group.add(chunkGroup);
+  }
+  updateWaterAnimation(dt){
+    if(!this.waterMaterial?.map||!Number.isFinite(dt)||dt<=0)return;
+    this.waterFlowTime+=dt;
+    this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.018)%1;
+    this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.032)%1;
   }
   rebuild(){
     this.group.clear();this.chunkGroups.clear();this.buildChunkIndex();
