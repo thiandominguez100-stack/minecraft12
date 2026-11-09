@@ -222,3 +222,12 @@ button,input{font:inherit}button{color:inherit}
  .workbench-layout{gap:12px;margin-left:0}
  .recipe-book{grid-template-columns:1fr 1fr}
 }
+
+/* Alpha 1.1 — richer item sprites and camera modes. */
+.item-icon{object-fit:contain;image-rendering:pixelated;border:0!important;box-shadow:none!important;background:transparent;filter:drop-shadow(1px 2px 1px #0008);user-select:none}
+.slot .item-icon{width:35px;height:35px}
+.inv-slot .item-icon{width:76%;height:76%}
+.craft-slot .item-icon{width:68%;height:68%}
+.craft-output .item-icon{width:42px;height:42px}
+.catalog-item .item-icon{width:34px;height:34px}
+.recipe-note .item-icon{width:34px;height:34px}
