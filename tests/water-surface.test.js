@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {buildWaterSurface,waterCornerY,waterSurfaceY} from "../src/water-surface.js";
-const GRID=3,key=(x,y,z)=>x+","+y+","+z;
+const GRID=2,key=(x,y,z)=>x+","+y+","+z;
 class SurfaceWorld{
  constructor(){this.blocks=new Map();this.waterSources=new Set();this.waterStates=new Map();}
  get(x,y,z){return this.blocks.get(key(x,y,z))||null;}
@@ -34,4 +34,14 @@ test("a calm source pool keeps a level waterline and only flowing cells slope",(
  assert.equal(waterSurfaceY(w,0,1,0),1.5);assert.equal(waterSurfaceY(w,1,1,0),1.5);
  w.waterStates.set(key(1,1,0),{level:5,source:false,falling:false,settled:false});
  assert.ok(waterSurfaceY(w,1,1,0)<waterSurfaceY(w,0,1,0));
+});
+
+test("calm supported water renders as a flat continuous surface",()=>{
+ const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(1,1,0,"water");
+ w.waterStates.set(key(0,1,0),{level:1,source:false,falling:false,settled:true});
+ w.waterStates.set(key(1,1,0),{level:1,source:false,falling:false,settled:true});
+ const surface=buildWaterSurface(w,[[0,1,0],[1,1,0]]);
+ assert.ok(surface.positions.length>0);
+ assert.equal(surface.topFaces,2);
+ assert.equal(surface.sideFaces,6);
 });
