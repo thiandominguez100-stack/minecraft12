@@ -80,7 +80,7 @@ test("the river centerline and lake cores generate connected natural water colum
   assert.ok(riverSources>=25,"sparse source blocks should maintain the natural river");
   const m=terrainSample(17,-14,seed);
   assert.equal(typeof m.isWaterColumn,"boolean");
- });
+ }
 });
 test("waterline terrain reaches the same block height at the dry bank",()=>{
  const bed=waterBankHeight(0,16,13.5,24,2.2,5);
