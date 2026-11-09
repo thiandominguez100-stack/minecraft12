@@ -9,3 +9,10 @@ export const BLOCK_TEXTURE_PROFILES=Object.freeze({
  crafting_table:"wood workbench grid",furnace:"stone casing and furnace mouth",chest:"wood and brass bands",
  snow:"packed snow and sparkle",clay:"mottled clay",moss:"organic moss patches"
 });
+
+export function blockMaterialSettings(blockId){
+  if(blockId==="leaves")return {transparent:false,opacity:1,depthWrite:true,alphaTest:.42};
+  if(blockId==="glass")return {transparent:true,opacity:.68,depthWrite:false,alphaTest:0};
+  if(blockId==="water")return {transparent:true,opacity:.78,depthWrite:false,alphaTest:0};
+  return {transparent:false,opacity:1,depthWrite:true,alphaTest:0};
+}
