@@ -1,13 +1,16 @@
 # BlockWorld 3D — Technical roadmap
 
-## Current milestone: Alpha 0.3 — presentation, texture and creature pass
+## Current milestone: Alpha 0.3.1 — gameplay control and creature interaction
 
 Implemented:
 - Procedural seeded terrain, trees, ore patches and water pockets.
 - Cinematic live 3D title-screen panorama and animated menu identity.
 - Asynchronous world generation with progress tied to terrain rows and mesh rebuild.
 - Six-face block materials with generated 16×16 pixel maps and custom grass/log/ore/foliage patterns.
-- Initial passive creature framework: sheep, cows and chickens with idle/walk animation and roaming.
+- Initial passive creature framework: sheep, cows and chickens with idle/walk/flee animation and roaming.
+- First-person collision and movement corrections: full AABB checks, support probing, swept vertical collision, gravity substeps, friction, air control and jump buffering.
+- Interactable creature hitboxes, health, hit flash, knockback and basic drops.
+- Pixel-art item/hotbar/inventory sprites generated at 16×16.
 - Generated 16×16 pixel textures and instanced block batches.
 - First-person controls, basic axis collision, jump and Creative flight.
 - Survival mining progress, block drops, placement and a hotbar.
