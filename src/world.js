@@ -174,7 +174,7 @@ export class VoxelWorld{
         if(hash(x,z,this.seed+606)>.48)this.placeBoulder(x,z);
     this.placeLandmark(9,-18);
     this.placeLandmark(-43,42);
-    this.placeLandmark(63,-57);
+    this.placeLandmark(44,-75);
   }
 
   generate(){this.generateTerrain();this.generateFeatures();this.base=new Map(this.blocks);this.rebuild();}
