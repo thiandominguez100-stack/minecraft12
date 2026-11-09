@@ -11,14 +11,17 @@ class SurfaceWorld{
 test("neighboring water cells share a surface without internal walls",()=>{
  const w=new SurfaceWorld();w.set(0,0,0,"stone");w.set(1,0,0,"stone");w.set(0,1,0,"water");w.set(1,1,0,"water");w.waterSources.add(key(0,1,0));w.waterSources.add(key(1,1,0));
  const mesh=buildWaterSurface(w,[[0,1,0],[1,1,0]]);
- assert.equal(mesh.topFaces,2);assert.equal(mesh.sideFaces,6);assert.equal(mesh.waveWeights.length,mesh.positions.length/3);assert.ok(mesh.indices.length>2*GRID*GRID*6);
+ assert.equal(mesh.topFaces,2);assert.equal(mesh.sideFaces,6);assert.equal(mesh.positions.length/3,mesh.uvs.length/2);assert.ok(mesh.indices.length>2*6);
 });
 test("adjacent fluid levels share the same corner height",()=>{
  const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(1,1,0,"water");w.waterSources.add(key(0,1,0));w.waterStates.set(key(0,1,0),{level:0,source:true});w.waterStates.set(key(1,1,0),{level:7,source:false});
- const a=waterCornerY(w,.5,1,.5),b=waterCornerY(w,.5,1,.5);assert.equal(a,b);assert.ok(a<1.5&&a>1);
+ const a=waterCornerY(w,.5,1,.5),b=waterCornerY(w,.5,1,.5);assert.equal(a,b);assert.equal(a,1.512);
 });
-test("flow level changes surface height",()=>{
- const w=new SurfaceWorld();w.set(0,1,0,"water");w.waterStates.set(key(0,1,0),{level:1});const full=waterSurfaceY(w,0,1,0);w.waterStates.set(key(0,1,0),{level:7});assert.ok(waterSurfaceY(w,0,1,0)<full);
+test("water surface remains flat while physical flow level is stored separately",()=>{
+ const w=new SurfaceWorld();w.set(0,1,0,"water");w.waterStates.set(key(0,1,0),{level:1,falling:false});
+ const full=waterSurfaceY(w,0,1,0);w.waterStates.set(key(0,1,0),{level:7,falling:false});
+ assert.equal(waterSurfaceY(w,0,1,0),full);
+ assert.equal(w.waterStates.get(key(0,1,0)).level,7);
 });
 test("water below another water cell has no top face",()=>{
  const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(0,2,0,"water");w.set(0,0,0,"stone");assert.equal(buildWaterSurface(w,[[0,1,0],[0,2,0]]).topFaces,1);
@@ -44,4 +47,20 @@ test("calm supported water renders as a flat continuous surface",()=>{
  assert.ok(surface.positions.length>0);
  assert.equal(surface.topFaces,2);
  assert.equal(surface.sideFaces,6);
+});
+
+test("new water renderer always builds an upward-facing blue-water surface for an exposed cell",()=>{
+ const w=new SurfaceWorld();w.set(0,0,0,"sand");w.set(0,1,0,"water");
+ const mesh=buildWaterSurface(w,[[0,1,0]]);
+ assert.equal(mesh.topFaces,1);
+ assert.equal(mesh.sideFaces,4);
+ assert.ok(mesh.positions.some((v,i)=>i%3===1&&v>1.5));
+ assert.equal(mesh.indices.length,30);
+});
+test("adjacent water cells share the same exact surface height without a seam",()=>{
+ const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(1,1,0,"water");
+ const a=waterSurfaceY(w,0,1,0),b=waterSurfaceY(w,1,1,0);
+ assert.equal(a,b);assert.equal(a,1.512);
+ const mesh=buildWaterSurface(w,[[0,1,0],[1,1,0]]);
+ assert.equal(mesh.topFaces,2);assert.equal(mesh.sideFaces,6);
 });
