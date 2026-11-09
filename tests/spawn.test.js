@@ -14,7 +14,7 @@ test("spawn avoids a flooded origin and selects the nearest clear grass surface"
  assert.deepEqual(findSafeSpawn(world),{x:2,y:5.12,z:0});
 });
 test("spawn skips grass covered by tree leaves or solid blocks",()=>{
- const world=worldWith([[0,3,0,"grass"],[0,4,0,"leaves"],[2,3,0,"grass"],[2,4,0,"stone"]]);
+ const world=worldWith([[0,3,0,"grass"],[0,4,0,"leaves"],[2,3,0,"grass"],[2,4,0,"stone"],[0,3,2,"grass"]]);
  assert.deepEqual(findSafeSpawn(world),{x:0,y:5.12,z:2});
 });
 test("spawn prefers grass over sand when both are at the same search radius",()=>{
