@@ -4,8 +4,8 @@ const PLAYER_RADIUS=.29;
 const approach=(value,target,amount)=>value<target?Math.min(value+amount,target):Math.max(value-amount,target);
 
 export class FirstPersonPhysics{
-  constructor(){this.onGround=false;this.jumpBuffer=0;}
-  reset(){this.onGround=false;this.jumpBuffer=0;}
+  constructor(){this.onGround=false;this.jumpBuffer=0;this.inWater=false;this.submersion=0;}
+  reset(){this.onGround=false;this.jumpBuffer=0;this.inWater=false;this.submersion=0;}
   queueJump(){this.jumpBuffer=.2;}
   update(world,position,velocity,controls,dt){
     dt=Math.max(0,Math.min(.05,Number(dt)||0));
@@ -25,6 +25,33 @@ export class FirstPersonPhysics{
     const inputLength=Math.hypot(inputX,inputZ);
     if(inputLength>1){inputX/=inputLength;inputZ/=inputLength;}
     const speed=Math.max(0,Number(controls.speed)||0);
+    this.submersion=world.getSubmersion?world.getSubmersion(position,PLAYER_RADIUS,PLAYER_HEIGHT):0;
+    this.inWater=this.submersion>.035;
+    if(this.inWater){
+      this.onGround=false;this.jumpBuffer=0;
+      const swimSpeed=Math.min(speed,controls.sprint?4.1:3.35);
+      const targetSwimX=inputX*swimSpeed,targetSwimZ=inputZ*swimSpeed;
+      velocity.x=approach(velocity.x,inputLength>0?targetSwimX:0,(inputLength>0?9:2.8)*dt);
+      velocity.z=approach(velocity.z,inputLength>0?targetSwimZ:0,(inputLength>0?9:2.8)*dt);
+      velocity.y+=(-3.5+this.submersion*8)*dt;
+      velocity.y*=Math.exp(-2.4*dt);
+      if(controls.jump)velocity.y=Math.min(4.8,velocity.y+11*dt);
+
+      const swimX=velocity.x*dt,swimZ=velocity.z*dt;
+      const swimSteps=Math.max(1,Math.ceil(Math.max(Math.abs(swimX),Math.abs(swimZ))/.075));
+      for(let i=0;i<swimSteps;i++){
+        const oldX=position.x;position.x+=swimX/swimSteps;
+        if(world.collides(position,PLAYER_RADIUS,PLAYER_HEIGHT)){position.x=oldX;velocity.x=0;}
+        const oldZ=position.z;position.z+=swimZ/swimSteps;
+        if(world.collides(position,PLAYER_RADIUS,PLAYER_HEIGHT)){position.z=oldZ;velocity.z=0;}
+      }
+      const swimY=velocity.y*dt,verticalSwimSteps=Math.max(1,Math.ceil(Math.abs(swimY)/.045));
+      for(let i=0;i<verticalSwimSteps;i++){
+        const oldY=position.y;position.y+=swimY/verticalSwimSteps;
+        if(world.collides(position,PLAYER_RADIUS,PLAYER_HEIGHT)){position.y=oldY;velocity.y=0;break;}
+      }
+      return this;
+    }
     const targetX=inputX*speed,targetZ=inputZ*speed;
     const acceleration=this.onGround?34:11,friction=this.onGround?22:2.4;
     velocity.x=approach(velocity.x,inputLength>0?targetX:0,(inputLength>0?acceleration:friction)*dt);
