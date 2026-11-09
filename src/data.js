@@ -14,7 +14,7 @@ export const BLOCKS = [
   {id:"gold_ore",name:"Mineral de oro",group:"Minerales",color:0x777b7e,hardness:3,drop:"raw_gold",tool:"pickaxe",accent:0xe9c544},
   {id:"diamond_ore",name:"Mineral de diamante",group:"Minerales",color:0x777b7e,hardness:3,drop:"diamond",tool:"pickaxe",accent:0x39d5cb},
   {id:"bedrock",name:"Roca madre",group:"Naturaleza",color:0x34383b,hardness:-1,drop:null},
-  {id:"water",name:"Agua",group:"Naturaleza",color:0x367fbd,hardness:100,drop:null,transparent:true,solid:false},
+  {id:"water",name:"Agua",group:"Naturaleza",color:0x367fbd,hardness:-1,drop:null,transparent:true,solid:false},
   {id:"torch",name:"Antorcha",group:"Decoración",color:0xf5b84b,hardness:0,drop:"torch",solid:false},
   {id:"crafting_table",name:"Mesa de trabajo",group:"Decoración",color:0xa47745,hardness:2.5,drop:"crafting_table",tool:"axe"},
   {id:"furnace",name:"Horno",group:"Decoración",color:0x777b7e,hardness:3.5,drop:"furnace",tool:"pickaxe"},
