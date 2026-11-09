@@ -25,7 +25,7 @@ export class VoxelWorld{
     this.group=new THREE.Group();this.group.name="WorldChunkRoot";scene.add(this.group);
     this.geometry=new THREE.BoxGeometry(1,1,1);
     this.materials=new Map();this.chunkGroups=new Map();this.chunkBlocks=new Map();
-    this.chunkSize=CHUNK_SIZE;this.chunkCount=TOTAL_CHUNKS;
+    this.chunkSize=CHUNK_SIZE;this.chunkCount=TOTAL_CHUNKS;this.renderDistanceChunks=6.5;this.renderCenter={x:0,z:0,ix:NaN,iz:NaN};
     this.bounds={minX:WORLD_MIN_X,maxX:WORLD_MAX_X,minZ:WORLD_MIN_Z,maxZ:WORLD_MAX_Z,width:WORLD_WIDTH,depth:WORLD_DEPTH};
     const faces=["right","left","top","bottom","front","back"];
     for(const def of BLOCKS){
@@ -322,7 +322,30 @@ export class VoxelWorld{
         waterMesh.renderOrder=2;chunkGroup.add(waterMesh);
       }
     }
-    this.chunkGroups.set(chunkKey,chunkGroup);this.group.add(chunkGroup);
+    this.chunkGroupVisibility(chunkGroup,ix,iz);
+     this.chunkGroups.set(chunkKey,chunkGroup);this.group.add(chunkGroup);
+  }
+  chunkGroupVisibility(group,ix,iz){
+    const cx=WORLD_MIN_X+ix*CHUNK_SIZE+CHUNK_SIZE*.5,cz=WORLD_MIN_Z+iz*CHUNK_SIZE+CHUNK_SIZE*.5;
+    const dx=cx-this.renderCenter.x,dz=cz-this.renderCenter.z,r=this.renderDistanceChunks*CHUNK_SIZE;
+    group.visible=dx*dx+dz*dz<=r*r;
+  }
+  updateRenderDistance(x,z,radius=this.renderDistanceChunks){
+    const ix=Math.floor((x-WORLD_MIN_X)/CHUNK_SIZE),iz=Math.floor((z-WORLD_MIN_Z)/CHUNK_SIZE);
+    if(ix===this.renderCenter.ix&&iz===this.renderCenter.iz&&radius===this.renderDistanceChunks)return false;
+    this.renderCenter={x,z,ix,iz};this.renderDistanceChunks=radius;
+    for(const [key,group] of this.chunkGroups){
+      const [cx,cz]=key.split(",").map(Number);this.chunkGroupVisibility(group,cx,cz);
+    }
+    return true;
+  }
+  getNearbyChunkGroups(x,z,range=1){
+    const ix=Math.floor((x-WORLD_MIN_X)/CHUNK_SIZE),iz=Math.floor((z-WORLD_MIN_Z)/CHUNK_SIZE),groups=[];
+    for(let dz=-range;dz<=range;dz++)for(let dx=-range;dx<=range;dx++){
+      const group=this.chunkGroups.get((ix+dx)+","+(iz+dz));
+      if(group)groups.push(group);
+    }
+    return groups;
   }
   updateWaterAnimation(dt){
     if(!Number.isFinite(dt)||dt<=0)return;this.waterFlowTime+=dt;
