@@ -15,6 +15,7 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 
 - Procedural voxel terrain with hills, trees, water and scattered ore deposits.
 - Cinematic title screen with a live, orbiting 3D landscape preview.
+- First-person voxel arm with idle, walking and mining motion.
 - A staged loading screen with progress tied to terrain generation and mesh construction.
 - Per-face 16×16 pixel textures with distinct grass, log, foliage and ore details.
 - Instanced block rendering with six-face material groups.
@@ -25,7 +26,7 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 - A 36-slot inventory with stack counts and basic tool durability.
 - Creative and Survival modes.
 - A small data-driven recipe list and crafting screen.
-- Animated passive creatures (sheep, cows and chickens) with idle/walk cycles and simple roaming.
+- Animated passive creatures (sheep, cows and chickens) with 64×32 pixel texture atlases, idle/walk cycles and simple roaming.
 - Day/night lighting, simple rain particles and weather commands.
 - Local save/load in browser storage, including world edits and inventory.
 - Local command console.
@@ -72,6 +73,6 @@ World edits, player position, inventory, game mode, time and weather are stored 
 
 ## Development status
 
-This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass: they do not yet have combat, breeding, drops, sound, collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, chunk streaming, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
+This is an **alpha foundation**, not a feature-complete commercial sandbox. The current creatures are a first visual/animation pass with 64×32 (2,048-pixel) per-species atlases: they do not yet have combat, breeding, drops, sound, collision-aware pathfinding or full survival behavior. Advanced survival simulation, complete recipe coverage, redstone, dimensions, chunk streaming, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
 
 The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROADMAP.md).
