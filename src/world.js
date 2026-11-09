@@ -80,7 +80,7 @@ export class VoxelWorld{
       this.materials.set(def.id,materials);
     }
     const waterTexture=makeTexture(BLOCK_MAP.water,"top");
-    waterTexture.wrapS=THREE.RepeatWrapping;waterTexture.wrapT=THREE.RepeatWrapping;
+    waterTexture.wrapS=THREE.RepeatWrapping;waterTexture.wrapT=THREE.RepeatWrapping;waterTexture.needsUpdate=true;
     this.waterGeometry=new THREE.BoxGeometry(.998,.998,.998);
     this.waterMaterial=new THREE.MeshLambertMaterial({map:waterTexture,color:0xc5eaff,transparent:true,opacity:.64,depthWrite:false,side:THREE.DoubleSide});
     this.waterFlowTime=0;
