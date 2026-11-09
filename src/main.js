@@ -498,6 +498,8 @@ function tick(now){
   if(now-lastSave>30000){saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:playerPosition.toArray(),viewMode,dayTime,weather,health,hunger,waterSources:fluid.exportSources(),drops:drops.serialize()});lastSave=now}
  }
  renderer.render(scene,camera);
+ const indicator=$("performance-indicator");
+ if(indicator&&started)indicator.textContent=Math.round(estimatedFPS)+" FPS · "+renderer.info.render.calls+" draw calls · "+adaptiveRenderDistance.toFixed(1)+" chunks";
 }
 requestAnimationFrame(tick);
 window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(adaptivePixelRatio)});

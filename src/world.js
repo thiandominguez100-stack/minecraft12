@@ -3,6 +3,7 @@ import {BLOCKS,BLOCK_MAP} from "./data.js";
 import {makeBlockTexture} from "./textures.js";
 import {blockMaterialSettings} from "./texture-spec.js";
 import {buildWaterSurface,waterSurfaceY,waterWaveHeight} from "./water-surface.js";
+import {greedyMeshChunk} from "./greedy-meshing.js";
 import {
   CHUNK_SIZE,CHUNKS_X,CHUNKS_Z,TOTAL_CHUNKS,WORLD_MIN_X,WORLD_MIN_Z,
   WORLD_WIDTH,WORLD_DEPTH,WORLD_MAX_X,WORLD_MAX_Z,WATER_LEVEL,
@@ -33,7 +34,6 @@ export class VoxelWorld{
     this.scene=scene;this.seed=seed;
     this.blocks=new Map();this.base=new Map();this.changes=new Map();this.waterSources=new Set();this.waterStates=new Map();
     this.group=new THREE.Group();this.group.name="WorldChunkRoot";scene.add(this.group);
-    this.geometry=new THREE.BoxGeometry(1,1,1);
     this.materials=new Map();this.chunkGroups=new Map();this.chunkBlocks=new Map();
     this.chunkSize=CHUNK_SIZE;this.chunkCount=TOTAL_CHUNKS;this.renderDistanceChunks=6.5;this.renderCenter={x:0,z:0,ix:NaN,iz:NaN};
     this.bounds={minX:WORLD_MIN_X,maxX:WORLD_MAX_X,minZ:WORLD_MIN_Z,maxZ:WORLD_MAX_Z,width:WORLD_WIDTH,depth:WORLD_DEPTH};
@@ -225,7 +225,7 @@ export class VoxelWorld{
       const chunk=this.chunkBlocks.get(address.key)||new Map();
       if(id)chunk.set(key,{x,y,z,id});else chunk.delete(key);
       this.chunkBlocks.set(address.key,chunk);
-      if(rebuildNow)this.rebuildChunk(address.ix,address.iz);
+      if(rebuildNow)this.rebuildChunksAround(x,z);
     }
     return true;
   }
@@ -290,27 +290,41 @@ export class VoxelWorld{
       if(address)this.chunkBlocks.get(address.key).set(key,{x,y,z,id});
     }
   }
+  disposeChunkGroup(group){
+    if(!group)return;
+    group.traverse(object=>{if(object.isMesh&&(object.userData?.chunkGeometry||object.userData?.dynamicWater))object.geometry?.dispose();});
+    this.group.remove(group);group.clear();
+  }
+  rebuildChunksAround(x,z){
+    const address=chunkAddress(x,z);if(!address)return;
+    const affected=new Set([address.key]);
+    const localX=((x-WORLD_MIN_X)%CHUNK_SIZE+CHUNK_SIZE)%CHUNK_SIZE;
+    const localZ=((z-WORLD_MIN_Z)%CHUNK_SIZE+CHUNK_SIZE)%CHUNK_SIZE;
+    if(localX===0&&address.ix>0)affected.add((address.ix-1)+","+address.iz);
+    if(localX===CHUNK_SIZE-1&&address.ix<CHUNKS_X-1)affected.add((address.ix+1)+","+address.iz);
+    if(localZ===0&&address.iz>0)affected.add(address.ix+","+(address.iz-1));
+    if(localZ===CHUNK_SIZE-1&&address.iz<CHUNKS_Z-1)affected.add(address.ix+","+(address.iz+1));
+    for(const key of affected){const [ix,iz]=key.split(",").map(Number);this.rebuildChunk(ix,iz);}
+  }
   rebuildChunk(ix,iz){
     const chunkKey=ix+","+iz,previous=this.chunkGroups.get(chunkKey);
-    if(previous){
-      previous.traverse(object=>{if(object.userData?.dynamicWater)object.geometry.dispose();});
-      this.group.remove(previous);previous.clear();
-    }
+    if(previous)this.disposeChunkGroup(previous);
     const chunkGroup=new THREE.Group();chunkGroup.name="Chunk "+ix+","+iz;
     chunkGroup.userData={chunkX:ix,chunkZ:iz,blockSize:CHUNK_SIZE};
-    const entries=this.chunkBlocks.get(chunkKey)||new Map(),grouped=new Map(),waterCoords=[];
-    for(const item of entries.values()){
-      if(item.id==="water"){waterCoords.push([item.x,item.y,item.z]);continue;}
-      if(!grouped.has(item.id))grouped.set(item.id,[]);
-      grouped.get(item.id).push([item.x,item.y,item.z]);
+    const entries=this.chunkBlocks.get(chunkKey)||new Map(),waterCoords=[];
+    const blockMeshes=greedyMeshChunk(entries.values(),(x,y,z)=>this.get(x,y,z),BLOCK_MAP);
+    for(const [id,data] of blockMeshes){
+      const geometry=new THREE.BufferGeometry();
+      geometry.setAttribute("position",new THREE.Float32BufferAttribute(data.positions,3));
+      geometry.setAttribute("uv",new THREE.Float32BufferAttribute(data.uvs,2));
+      geometry.setIndex(data.indices);
+      for(const group of data.groups)geometry.addGroup(group.start,group.count,group.materialIndex);
+      geometry.computeVertexNormals();geometry.computeBoundingSphere();
+      const mesh=new THREE.Mesh(geometry,this.materials.get(id));
+      mesh.userData={blockId:id,greedyMesh:true,chunkGeometry:true,quadCount:data.quadCount};
+      chunkGroup.add(mesh);
     }
-    for(const [id,coords] of grouped){
-      const mesh=new THREE.InstancedMesh(this.geometry,this.materials.get(id),coords.length);
-      mesh.userData.blockId=id;mesh.userData.coords=coords;mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-      const dummy=new THREE.Object3D();
-      coords.forEach((position,index)=>{dummy.position.set(position[0],position[1],position[2]);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
-      mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();chunkGroup.add(mesh);
-    }
+    for(const item of entries.values())if(item.id==="water")waterCoords.push([item.x,item.y,item.z]);
     if(waterCoords.length){
       const surface=buildWaterSurface(this,waterCoords);
       if(surface.positions.length){
@@ -318,19 +332,14 @@ export class VoxelWorld{
         geometry.setAttribute("position",new THREE.Float32BufferAttribute(surface.positions,3));
         geometry.setAttribute("uv",new THREE.Float32BufferAttribute(surface.uvs,2));
         geometry.setAttribute("waterWave",new THREE.Float32BufferAttribute(surface.waveWeights,1));
-        geometry.setIndex(surface.indices);
-        geometry.computeBoundingSphere();
+        geometry.setIndex(surface.indices);geometry.computeBoundingSphere();
         const waterMesh=new THREE.Mesh(geometry,this.waterMaterial);
-        waterMesh.userData={
-          blockId:"water",dynamicWater:true,topFaces:surface.topFaces,
-          sideFaces:surface.sideFaces,waterCellCount:waterCoords.length,
-          basePositions:new Float32Array(surface.positions)
-        };
+        waterMesh.userData={blockId:"water",dynamicWater:true,topFaces:surface.topFaces,sideFaces:surface.sideFaces,waterCellCount:waterCoords.length,basePositions:new Float32Array(surface.positions)};
         waterMesh.renderOrder=1;waterMesh.frustumCulled=false;chunkGroup.add(waterMesh);
       }
     }
     this.chunkGroupVisibility(chunkGroup,ix,iz);
-     this.chunkGroups.set(chunkKey,chunkGroup);this.group.add(chunkGroup);
+    this.chunkGroups.set(chunkKey,chunkGroup);this.group.add(chunkGroup);
   }
   chunkGroupVisibility(group,ix,iz){
     const cx=WORLD_MIN_X+ix*CHUNK_SIZE+CHUNK_SIZE*.5,cz=WORLD_MIN_Z+iz*CHUNK_SIZE+CHUNK_SIZE*.5;
@@ -364,35 +373,43 @@ export class VoxelWorld{
   }
   updateWaterAnimation(dt){
     if(!Number.isFinite(dt)||dt<=0)return;
-    this.waterFlowTime+=dt;
-    const time=this.waterFlowTime;
+    this.waterAnimationAccumulator=(this.waterAnimationAccumulator||0)+dt;
+    if(this.waterAnimationAccumulator<1/24)return;
+    const step=this.waterAnimationAccumulator;this.waterAnimationAccumulator=0;
+    this.waterFlowTime+=step;const time=this.waterFlowTime;
     if(this.waterMaterial?.map){
-      this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+dt*.026)%1;
-      this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+dt*.009)%1;
+      this.waterMaterial.map.offset.x=(this.waterMaterial.map.offset.x+step*.026)%1;
+      this.waterMaterial.map.offset.y=(this.waterMaterial.map.offset.y+step*.009)%1;
     }
     for(const group of this.chunkGroups.values()){
       if(!group.visible)continue;
       for(const mesh of group.children){
         if(!mesh.userData?.dynamicWater)continue;
-        const position=mesh.geometry.attributes.position;
-        const weights=mesh.geometry.attributes.waterWave;
-        const base=mesh.userData.basePositions;
+        const position=mesh.geometry.attributes.position,weights=mesh.geometry.attributes.waterWave,base=mesh.userData.basePositions;
         if(!position||!weights||!base)continue;
         const array=position.array;
         for(let i=0;i<weights.count;i++){
-          const offset=i*3,x=base[offset],z=base[offset+2],weight=weights.getX(i);
-          array[offset+1]=base[offset+1]+waterWaveHeight(x,z,time,weight);
+          const offset=i*3;
+          array[offset+1]=base[offset+1]+waterWaveHeight(base[offset],base[offset+2],time,weights.getX(i));
         }
         position.needsUpdate=true;
       }
     }
   }
   rebuild(){
+    for(const group of this.chunkGroups.values())this.disposeChunkGroup(group);
     this.group.clear();this.chunkGroups.clear();this.buildChunkIndex();
     for(let iz=0;iz<CHUNKS_Z;iz++)for(let ix=0;ix<CHUNKS_X;ix++)this.rebuildChunk(ix,iz);
   }
   resolveHit(hit){
-    if(!hit||hit.instanceId===undefined)return null;
+    if(!hit?.object)return null;
+    if(hit.object.userData?.greedyMesh&&hit.point&&hit.face?.normal){
+      const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+      const point=hit.point.clone().addScaledVector(normal,-.01);
+      const x=Math.floor(point.x+.5),y=Math.floor(point.y+.5),z=Math.floor(point.z+.5),id=this.get(x,y,z);
+      return id?{x,y,z,id}:null;
+    }
+    if(hit.instanceId===undefined)return null;
     const coords=hit.object.userData.coords?.[hit.instanceId];
     if(!coords)return null;
     return {x:coords[0],y:coords[1],z:coords[2],id:hit.object.userData.blockId};

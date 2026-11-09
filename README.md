@@ -196,10 +196,22 @@ The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROA
 - Kept the existing fluid simulation for flowing, falling, swimming and water placement; only the visual surface renderer was replaced.
 - Added tests for visible top faces, continuous neighboring surfaces, correct waterline height and real water-block volume in generated river/lake basins.
 
-## Alpha 1.4.1 — lower, gently animated water
+## Alpha 1.5.0 — lower, gently animated water
 
 - Lowered the natural river/lake waterline from block level 5 to block level 4, reducing the visible water volume by one voxel layer while preserving the existing shoreline alignment and swimming/submersion tests.
 - Rebuilt each exposed water top into a 3 × 3 grid per cell. A shared world-space wave function gently displaces the grid vertices, so wave motion stays continuous across adjacent cells and chunk borders.
 - Added multi-scale low-amplitude surface waves and faster, slower-than-ripple texture drift for a more fluid appearance without bringing back the custom GLSL shader.
 - Kept an opaque, depth-tested, unlit water material as the stable visibility baseline.
 - Old saves migrate natural source coordinates from the previous y=5 waterline so the lowered river does not reactivate legacy high-level sources.
+
+## Alpha 1.5.0 — chunk meshing and engine optimization
+
+- Replaced per-block InstancedMesh batches with greedy meshing. Adjacent coplanar faces of the same block material are merged into larger rectangles; fully hidden faces between opaque voxels are omitted.
+- Each chunk now emits one combined geometry per visible block material with six face-material groups, repeated UVs preserving the 64 × 64 texture scale, and a compact triangle index buffer.
+- Transparent blocks (leaves and glass) retain visible cutout boundaries; opaque neighboring blocks correctly occlude hidden faces. Water stays on its separate surface renderer.
+- Raycast hit resolution now converts merged-mesh intersection points and face normals back to the exact voxel coordinate, so mining and placement work without InstancedMesh instance IDs.
+- Editing blocks on chunk boundaries rebuilds the neighboring chunk mesh as well, preventing stale faces or seams at chunk edges.
+- Chunk geometry is explicitly disposed before rebuilding or replacing a chunk to limit GPU memory leaks.
+- Water vertex animation is capped at 24 updates per second while the main renderer can continue at its adaptive frame rate.
+- The HUD performance indicator now also reports actual Three.js draw-call count.
+- Added regression tests for face culling, merged rectangles, transparent block boundaries, chunk-edge neighbor visibility, repeated texture UVs and material group coverage.
