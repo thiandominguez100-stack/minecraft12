@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildWaterSurface,waterCornerY,waterSurfaceY} from "../src/water-surface.js";
+import {buildWaterSurface,waterCornerY,waterSurfaceY,waterWaveHeight} from "../src/water-surface.js";
 const GRID=2,key=(x,y,z)=>x+","+y+","+z;
 class SurfaceWorld{
  constructor(){this.blocks=new Map();this.waterSources=new Set();this.waterStates=new Map();}
@@ -55,7 +55,7 @@ test("new water renderer always builds an upward-facing blue-water surface for a
  assert.equal(mesh.topFaces,1);
  assert.equal(mesh.sideFaces,4);
  assert.ok(mesh.positions.some((v,i)=>i%3===1&&v>1.5));
- assert.equal(mesh.indices.length,30);
+ assert.equal(mesh.indices.length,78);assert.equal(mesh.waveWeights.length,mesh.positions.length/3);
 });
 test("adjacent water cells share the same exact surface height without a seam",()=>{
  const w=new SurfaceWorld();w.set(0,1,0,"water");w.set(1,1,0,"water");
@@ -63,4 +63,17 @@ test("adjacent water cells share the same exact surface height without a seam",(
  assert.equal(a,b);assert.equal(a,1.512);
  const mesh=buildWaterSurface(w,[[0,1,0],[1,1,0]]);
  assert.equal(mesh.topFaces,2);assert.equal(mesh.sideFaces,6);
+});
+
+test("water surface is subdivided into a moving wave mesh",()=>{
+ const w=new SurfaceWorld();w.set(0,1,0,"water");
+ const mesh=buildWaterSurface(w,[[0,1,0]]);
+ assert.equal(mesh.topFaces,1);
+ assert.ok(mesh.waveWeights.filter(v=>v===1).length>=16);
+ assert.equal(waterWaveHeight(1,1,0,1),waterWaveHeight(1,1,0,1));
+ assert.notEqual(waterWaveHeight(1,1,0,1),waterWaveHeight(1,1,1,1));
+ assert.ok(Math.abs(waterWaveHeight(1,1,1,1))<.034);
+});
+test("the lowered waterline remains exactly one block below the previous level",()=>{
+ assert.equal(waterSurfaceY(new SurfaceWorld(),0,4,0),4.512);
 });
