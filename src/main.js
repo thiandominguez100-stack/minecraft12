@@ -9,7 +9,7 @@ import {saveGame,loadGame,deleteSave} from "./storage.js";
 const $=id=>document.getElementById(id);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8bc7e7);
-scene.fog=new THREE.Fog(0x8bc7e7,38,82);
+scene.fog=new THREE.Fog(0x8bc7e7,52,118);
 const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,140);
 scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
@@ -30,7 +30,7 @@ const keys={},ray=new THREE.Raycaster();ray.far=6;
 let leftDown=false,miningKey="",miningProgress=0,lastSave=0,lastHunger=0,toastTimer=0;
 let targetHit=null,targetMob=null,toastTimerId=0;
 const rainCount=360,rainPositions=new Float32Array(rainCount*3);
-for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*42;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*42}
+for(let i=0;i<rainCount;i++){rainPositions[i*3]=(Math.random()-.5)*62;rainPositions[i*3+1]=Math.random()*24;rainPositions[i*3+2]=(Math.random()-.5)*46}
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
 const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xc9dceb,size:.09,transparent:true,opacity:.56}));rain.visible=false;scene.add(rain);
 
@@ -150,11 +150,11 @@ function save(){
  const ok=saveGame({seed:world.seed,changes:world.exportChanges(),inventory:inventory.serialize(),selected:inventory.selected,mode,position:camera.position.toArray(),dayTime,weather,health,hunger});
  if(ok)notify("Mundo guardado en este navegador.");else notify("No se pudo guardar. Comprueba el almacenamiento del navegador.");
 }
-function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,false);return hits.length?hits[0]:null}
+function currentTarget(){scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(world.group.children,true);return hits.length?hits[0]:null}
 function updateAim(){
  scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
  ray.setFromCamera(new THREE.Vector2(0,0),camera);
- const blocks=ray.intersectObjects(world.group.children,false),blockHit=blocks.length?blocks[0]:null;
+ const blocks=ray.intersectObjects(world.group.children,true),blockHit=blocks.length?blocks[0]:null;
  const creature=mobs?.pick(ray);
  if(creature&&(!blockHit||creature.distance<blockHit.distance)){targetMob=creature.mob;targetHit=null}
  else{targetMob=null;targetHit=blockHit}
