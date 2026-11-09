@@ -14,7 +14,7 @@ test("six faces of one block map to six unique atlas tiles",()=>{
 test("different block types cannot share a texture atlas tile",()=>{
  const a=atlasTileRect(0,5),b=atlasTileRect(1,0);
  assert.notDeepEqual(a,b);
- assert.equal(a[0],b[0]);assert.ok(b[1]<a[1]||b[1]>a[1]);
+ assert.equal(a[1],b[1]);assert.equal(b[0]-a[0],1/ATLAS_COLUMNS);
 });
 test("the atlas rejects invalid face indices and capacity overflow",()=>{
  assert.throws(()=>atlasTileRect(0,6),RangeError);
