@@ -1,12 +1,13 @@
 # BlockWorld 3D — Technical roadmap
 
-## Current release: Alpha 2.0.0 — infinite wind-swept meadow
+## Current release: Alpha 2.1.0 — ultra-dense animated grass
 
-Implemented in Alpha 2.0.0:
-- Reset the generated environment to a flat, infinite grass-only meadow.
-- Stream 16 × 16 chunks around the player and unload distant chunks to bound memory use.
-- Add dense, deterministic instanced grass blades with coherent GPU-driven wind waves.
-- Preserve movement, collision, camera, HUD and local saves while isolating old worlds under a previous save key.
+Implemented in Alpha 2.1.0:
+- Generate 52–76 fine, tapered grass blades on every surface tile, with varied height, lean and individual green tones.
+- Render over 2.2 million blades across the full high-quality streaming radius using packed GPU instance buffers and one vegetation draw call per chunk.
+- Animate curved blades with layered travelling wind waves, cross-gusts and fine flutter; rain increases the gust strength.
+- Build chunks progressively and retain adaptive render distance so low frame rates reduce the visible vegetation workload.
+- Preserve the infinite grass-only environment, movement, collision, camera, HUD and local saves.
 
 Earlier milestones below are historical implementation notes.
 

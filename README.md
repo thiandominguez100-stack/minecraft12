@@ -115,7 +115,7 @@ World edits, player position, inventory, game mode, time and weather are stored 
 
 ## Development status
 
-This is an **alpha foundation**, not a feature-complete commercial sandbox. The current world is intentionally a grass-only infinite meadow; former terrain and creature systems are not instantiated in this build. The meadow uses instanced grass blades and GPU vertex animation for wind; multiplayer, audio, and full survival simulation remain unimplemented. Advanced survival simulation, complete recipe coverage, redstone, dimensions, infinite chunk streaming beyond the current 12-chunk map, multiplayer, server authority, sound design and complete accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
+This is an **alpha foundation**, not a feature-complete commercial sandbox. The current world is intentionally a grass-only infinite meadow; former terrain and creature systems are not instantiated in this build. The meadow uses instanced grass blades and GPU vertex animation for wind; multiplayer, audio, and full survival simulation remain unimplemented. Advanced survival simulation, complete recipe coverage, redstone, dimensions, multiplayer, server authority, sound design and full-scale accessibility/performance testing are not implemented yet. Block textures are original procedural 16×16 pixel art, not official Minecraft textures.
 
 The technical direction and planned milestones are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
