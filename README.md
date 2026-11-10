@@ -19,16 +19,17 @@ The app loads Three.js from jsDelivr, so the first load requires an internet con
 - Passive creature simulation is suspended in menus and while overlays pause gameplay.
 - Saved midnight (`00:00`) now round-trips correctly instead of being replaced by the default time.
 
-## Alpha 1.5.3 — atlas sampling correction\n\n- Replaced fragile texture-sample string substitution with an explicit Three.js `map_fragment` replacement; unknown shader layouts now fail loudly instead of silently sampling the full atlas.\n- Inset each atlas sampling rectangle by half a texel to keep nearest-filtered UVs inside their own 64×64 tile.\n- Added regression tests for shader patching, unexpected shader layouts and atlas tile boundaries.\n\n## Current alpha features
+## Alpha 1.5.3 — atlas sampling correction\n\n- Replaced fragile texture-sample string substitution with an explicit Three.js `map_fragment` replacement; unknown shader layouts now fail loudly instead of silently sampling the full atlas.\n- Inset each atlas sampling rectangle by half a texel to keep nearest-filtered UVs inside their own 64×64 tile.\n- Added regression tests for shader patching, unexpected shader layouts and atlas tile boundaries.\n\n## Alpha 2.1.0 — ultra-dense living grass
 
 - Infinite, completely flat meadow: every generated surface is grass, with no trees, rocks, hills, rivers, lakes, structures or biome changes.
 - Infinite chunk streaming: 16 × 16 chunks are generated around the player and unloaded behind them to bound memory use.
-- A four-block-deep grass-only ground layer, so the field remains continuous while walking and jumping.
-- Four deterministic grass blades per surface block, with subtle green variation.
-- Vertex-animated wind: coherent gust waves travel across the grass, with stronger motion during rain.
-- Grass is instanced per chunk, keeping moving vegetation to one draw call per chunk.
-- Existing first-person movement, jumping, camera modes, HUD, inventory and local saving remain available.
-- A new save namespace starts a clean meadow without overwriting the previous world save.
+- Fine tapered grass blades: each surface block receives a deterministic cluster of 52–76 narrow blades with individual height, lean, hue and brightness.
+- More than two million visible grass blades at the full high-quality render radius; adaptive render distance reduces the vegetation workload automatically when frame rate falls.
+- Packed GPU instance buffers replace per-blade JavaScript objects, keeping millions of blades manageable and limiting vegetation to one draw call per chunk.
+- Layered vertex animation combines broad travelling gusts, crossing waves and subtle high-frequency flutter; rain increases wind strength.
+- Curved multi-section blade geometry has a fine tapered tip and natural base-to-tip color gradient.
+- Existing first-person movement, jumping, camera, HUD, inventory and local saving remain available.
+- A separate meadow save namespace keeps the earlier world save intact.
 
 ## Controls
 

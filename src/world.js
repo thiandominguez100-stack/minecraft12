@@ -4,7 +4,7 @@ import {greedyMeshChunk} from "./greedy-meshing.js";
 import {getBlockAtlasResources} from "./block-atlas.js";
 import {batchGreedyMeshes} from "./mesh-batching.js";
 import {CHUNK_SIZE,chunkAddress,chunksInRadius,isInsideWorld} from "./terrain.js";
-import {createGrassBladeLayout,createGrassBladeGeometry,createGrassBladeMaterial,windStrengthForWeather} from "./grass-wind.js";
+import {createGrassBladeBuffers,createGrassBladeGeometry,createGrassBladeMaterial,windStrengthForWeather} from "./grass-wind.js";
 const keyOf=(x,y,z)=>String(x)+","+String(y)+","+String(z),decodeKey=k=>k.split(",").map(Number);
 const BASE_MIN_Y=-3,BASE_MAX_Y=0;
 export class VoxelWorld{
@@ -22,7 +22,7 @@ export class VoxelWorld{
  putBlock(x,y,z,id){if(!isInsideWorld(x,z)||!Number.isInteger(y)||y<-64||y>256)return;this.set(x,y,z,id,false);}
  generateColumn(x,z){for(let y=BASE_MIN_Y;y<=BASE_MAX_Y;y++)this.putBlock(x,y,z,"grass");}
  generateTerrain(){this.updateRenderDistance(0,0,4.8);for(const k of this.desiredChunks){const [x,z]=k.split(",").map(Number);this.generateChunkData(x,z);}}
- generate(){this.updateRenderDistance(0,0,4.8);this.updateStreaming(Infinity);}
+ generate(){this.updateRenderDistance(0,0,4.8);this.updateStreaming(3);}
  async generateAsync(onProgress=()=>{}){
   this.clearChunks();this.renderCenter={x:0,z:0,ix:NaN,iz:NaN};this.updateRenderDistance(0,0,5.8);
   const total=this.pendingChunks.length;let built=0;onProgress(2,"Preparando una pradera infinita · chunks de 16 × 16");
@@ -77,10 +77,14 @@ export class VoxelWorld{
   const g=new THREE.Group();g.name="Grass Chunk "+ck;g.userData={chunkX:ix,chunkZ:iz,blockSize:16};
   const entries=this.chunkBlocks.get(ck)||this.generateChunkData(ix,iz),voxelMeshes=greedyMeshChunk(entries.values(),(x,y,z)=>this.get(x,y,z),BLOCK_MAP),batches=batchGreedyMeshes(voxelMeshes,BLOCK_MAP,this.blockAtlasRects);
   for(const [category,d] of batches){if(!d.positions.length)continue;const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(d.positions,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(d.uvs,2));geo.setAttribute("atlasRect",new THREE.Float32BufferAttribute(d.atlasRects,4));geo.setIndex(d.indices);geo.computeVertexNormals();geo.computeBoundingSphere();const mesh=new THREE.Mesh(geo,this.blockMaterials[category]);mesh.userData={blockId:"voxel-batch",greedyMesh:true,chunkGeometry:true,meshCategory:category,quadCount:d.quadCount,blockTypes:d.blockTypes};g.add(mesh);}
-  const blades=createGrassBladeLayout(this.seed,entries.values());
-  if(blades.length){const mesh=new THREE.InstancedMesh(this.grassBladeGeometry,this.grassBladeMaterial,blades.length),dummy=new THREE.Object3D(),color=new THREE.Color();
-   for(let i=0;i<blades.length;i++){const b=blades[i];dummy.position.set(b.x,b.y,b.z);dummy.rotation.set(0,b.angle,0);dummy.scale.set(b.width,b.height,b.width);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);color.setHSL(.285+(b.shade-.37)*.11,.58,b.shade);mesh.setColorAt(i,color);}
-   mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();mesh.frustumCulled=false;mesh.raycast=()=>{};mesh.userData={grassWind:true,bladeCount:blades.length};g.add(mesh);
+  const bladeBuffers=createGrassBladeBuffers(this.seed,entries.values());
+  if(bladeBuffers.count){
+   const mesh=new THREE.InstancedMesh(this.grassBladeGeometry,this.grassBladeMaterial,bladeBuffers.count);
+   mesh.instanceMatrix.array.set(bladeBuffers.matrices);mesh.instanceMatrix.needsUpdate=true;
+   mesh.instanceColor=new THREE.InstancedBufferAttribute(bladeBuffers.colors,3);mesh.instanceColor.needsUpdate=true;
+   mesh.frustumCulled=false;mesh.raycast=()=>{};
+   mesh.userData={grassWind:true,bladeCount:bladeBuffers.count,bladeDensity:bladeBuffers.count/Math.max(1,bladeBuffers.tileCount)};
+   g.add(mesh);
   }
   this.chunkGroupVisibility(g,ix,iz);this.chunkGroups.set(ck,g);this.group.add(g);return g;
  }
